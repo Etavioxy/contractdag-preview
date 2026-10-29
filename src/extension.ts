@@ -1,6 +1,7 @@
 import * as vscode from 'vscode'
 import { inspectSource, type InspectResult } from './editor/inspect.ts'
 import { registerEditorSupport } from './editor/register.ts'
+import { layout, type LayoutJson } from './layout.ts'
 import { toDumpJson, type DumpJson } from './model.ts'
 import { parse } from './parser.ts'
 import { createFileSink, createRecorder, type Recorder } from './records.ts'
@@ -20,6 +21,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand('contractdag.dump', () => dumpActiveDocument()),
     vscode.commands.registerCommand('contractdag.inspect', () => inspectActiveDocument()),
+    vscode.commands.registerCommand('contractdag.layout', () => layoutActiveDocument()),
   )
   registerEditorSupport(context)
 
@@ -55,5 +57,26 @@ function inspectActiveDocument(): InspectResult | undefined {
   const { line, character } = editor.selection.active
   const result = inspectSource(editor.document.getText(), line, character)
   recorder?.record('inspect', { ...result })
+  return result
+}
+
+/** 按当前文档算一遍布局，同一份坐标既写记录也作为命令返回值。 */
+function layoutActiveDocument(): LayoutJson | undefined {
+  const document = vscode.window.activeTextEditor?.document
+  if (document === undefined) {
+    recorder?.record('layout', { error: 'no-active-document' })
+    return undefined
+  }
+
+  const analysis = parse(document.getText())
+  if (analysis.model === undefined) {
+    recorder?.record('layout', { error: 'no-model' })
+    return undefined
+  }
+
+  const result = {
+    boxes: Object.fromEntries(layout(analysis.model, { direction: analysis.style.direction, gap: analysis.style.gap })),
+  }
+  recorder?.record('layout', { ...result })
   return result
 }
