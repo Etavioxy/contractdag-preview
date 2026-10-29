@@ -51,7 +51,10 @@ export function layout(model: ContractModel, options: LayoutOptions = {}): Layou
 
   const graph = graphStratify()(data)
   sugiyama().nodeSize([settings.nodeWidth + settings.gapCross, settings.nodeHeight + settings.gap])(graph)
-  const layers = toLayers([...graph.nodes()].map((node) => ({ name: node.data.id, x: node.x, y: node.y })))
+  const layers = toLayers(
+    [...graph.nodes()].map((node) => ({ name: node.data.id, x: node.x, y: node.y })),
+    settings.nodeHeight + settings.gap,
+  )
 
   const vertical = settings.direction === 'TB' || settings.direction === 'BT'
   const reversed = settings.direction === 'BT' || settings.direction === 'RL'
@@ -83,18 +86,18 @@ export function layout(model: ContractModel, options: LayoutOptions = {}): Layou
   return boxes
 }
 
-/** 同一层的节点 y 相同；层按 y 递增，层内按 d3-dag 给的 x 从左到右。 */
-function toLayers(placed: Array<{ name: string; x: number; y: number }>): string[][] {
-  const layerOfY = new Map<number, number>()
+/** 层按 y 递增，层内按 d3-dag 给的 x 从左到右；相邻层距不会小于层距的一半，按这个阈值切层。 */
+function toLayers(placed: Array<{ name: string; x: number; y: number }>, layerStep: number): string[][] {
   const layers: string[][] = []
+  let layerY = Number.NaN
+
   for (const node of [...placed].sort((left, right) => left.y - right.y || left.x - right.x)) {
-    const existing = layerOfY.get(node.y)
-    if (existing !== undefined) {
-      layers[existing]?.push(node.name)
-      continue
+    if (layers.length === 0 || Math.abs(node.y - layerY) > layerStep / 2) {
+      layers.push([])
+      layerY = node.y
     }
-    layerOfY.set(node.y, layers.length)
-    layers.push([node.name])
+    layers[layers.length - 1]?.push(node.name)
   }
+
   return layers
 }
