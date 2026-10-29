@@ -25,7 +25,10 @@ export async function run(context: ScenarioContext): Promise<void> {
   context.note('tabs', { groups: tabGroupsSnapshot(), editorColumn: editor.viewColumn ?? -1 })
   const tabs = previewTabs()
   context.check('预览与文本分处两组', tabs.length === 1 && tabs[0]?.group.viewColumn !== editor.viewColumn)
-  context.check('预览开在文本右侧', (tabs[0]?.group.viewColumn ?? 0) > (editor.viewColumn ?? 0))
+  context.check(
+    '文本第 1 列、预览第 2 列',
+    editor.viewColumn === vscode.ViewColumn.One && tabs[0]?.group.viewColumn === vscode.ViewColumn.Two,
+  )
 
   const original = document.getText()
   const edited = original.split('上线安装节点').join('上线安装')

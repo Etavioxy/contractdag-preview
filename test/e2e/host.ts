@@ -167,7 +167,7 @@ async function main(): Promise<void> {
     const checkRecords = records.filter((record) => record.event === 'check')
     const failedChecks = checkRecords.filter((record) => record['ok'] !== true)
 
-    const checks: Array<[string, boolean]> = [
+    const bodyChecks: Array<[string, boolean]> = [
       ['activation 写过 activated', present('activated')],
       ...(requiredRecords[scenario] ?? []).map((event): [string, boolean] => [`命令写过 ${event}`, present(event)]),
       ['剧本在时限内报出结果', suite.records.length > 0],
@@ -177,7 +177,11 @@ async function main(): Promise<void> {
       ['按 PID 终止了实例', termination.how === 'sigterm' || termination.how === 'sigkill'],
       ['观察到实例已关闭', child.exitCode !== null || child.signalCode !== null],
     ]
-    if (scenario !== 's1') checks.push(['剧本留下了检查项', checkRecords.length > 0])
+    if (scenario !== 's1') bodyChecks.push(['剧本留下了检查项', checkRecords.length > 0])
+
+    // 收尾本身也是判据：通过才清、清干净才算过；没过则留下现场供查。
+    cleanup = bodyChecks.every(([, ok]) => ok) ? cleanupSandbox(root) : 'kept'
+    const checks: Array<[string, boolean]> = [...bodyChecks, ['临时目录已清空', cleanup === 'done']]
     verdict = checks.every(([, ok]) => ok) ? 'PASS' : 'FAIL'
 
     console.log(`elapsed: ${Date.now() - startedAt}ms  termination: ${termination.how}`)
@@ -192,7 +196,6 @@ async function main(): Promise<void> {
     }
   } finally {
     if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL')
-    if (verdict === 'PASS') cleanup = cleanupSandbox(root)
   }
 
   console.log(`cleanup: ${cleanup}${cleanup === 'kept' ? `  （现场留在 ${root}）` : ''}`)
