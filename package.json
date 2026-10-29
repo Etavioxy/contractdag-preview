@@ -26,6 +26,10 @@
       {
         "command": "contractdag.layout",
         "title": "Contract DAG: 计算图布局"
+      },
+      {
+        "command": "contractdag.preview",
+        "title": "Contract DAG: 打开预览"
       }
     ],
     "languages": [
