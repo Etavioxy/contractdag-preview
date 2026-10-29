@@ -123,9 +123,15 @@ destination = 部署流水线完成：`env-ready` 已落盘，巡检报告已归
 </nodes>
 
 <links>
-源码构建节点 -> 上线安装节点 : build.tar
-上线安装节点 -> 站点巡检节点 : env-ready
-站点巡检节点 -> 流水线收尾 : verify-report
+[[源码构建节点 -> 上线安装节点]]
+artifact = build.tar
+
+[[上线安装节点 -> 站点巡检节点]]
+artifact = env-ready
+target   = /srv/app/live
+
+[[站点巡检节点 -> 流水线收尾]]
+artifact = verify-report
 </links>
 ```
 
@@ -151,9 +157,12 @@ destination = 部署流水线完成：`env-ready` 已落盘，巡检报告已归
      "destination": ["部署流水线完成：`env-ready` 已落盘，巡检报告已归档。"]}
   ],
   "links": [
-    {"from": "源码构建节点", "to": "上线安装节点", "artifact": "build.tar"},
-    {"from": "上线安装节点", "to": "站点巡检节点", "artifact": "env-ready"},
-    {"from": "站点巡检节点", "to": "流水线收尾", "artifact": "verify-report"}
+    {"from": "源码构建节点", "to": "上线安装节点",
+     "artifact": "build.tar"},
+    {"from": "上线安装节点", "to": "站点巡检节点",
+     "artifact": "env-ready", "target": "/srv/app/live"},
+    {"from": "站点巡检节点", "to": "流水线收尾",
+     "artifact": "verify-report"}
   ],
   "diagnostics": []
 }
