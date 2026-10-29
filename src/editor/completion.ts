@@ -27,12 +27,16 @@ export function completeAt(analysis: Analysis, line: number, character: number):
 
   const prefix = current.text.slice(0, character).trimStart()
   const names = nodeNamesOf(scanned)
+  const picksNodeNames = (): boolean => prefix.startsWith('[')
+
+  if (current.role === 'link-head') return names.map((name) => suggestion(name, '节点'))
+  if (current.role === 'node-head') return kinds.map((kind) => suggestion(kind, '种类'))
 
   switch (current.region) {
     case 'nodes':
       return prefix.startsWith('[') ? kinds.map((kind) => suggestion(kind, '种类')) : nodeKeys.map((key) => suggestion(key, '节点键'))
     case 'links':
-      return prefix.startsWith('[[')
+      return picksNodeNames()
         ? names.map((name) => suggestion(name, '节点'))
         : [suggestion('artifact', '连线键，必填')]
     case 'style':

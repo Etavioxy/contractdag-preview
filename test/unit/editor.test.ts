@@ -120,6 +120,19 @@ test('补全：样式区先给关键字，再按关键字给值', () => {
   )
 })
 
+test('补全：按行的角色判，不看前缀打到第几个字符', () => {
+  const partial = ['<nodes>', '[甲:change]', 'path = /a', 'destination = 做完。', '</nodes>', '', '<links>', '[', '</links>'].join('\n')
+
+  assert.deepEqual(
+    completeAt(parse(partial), 7, 1).map((item) => item.label),
+    ['甲'],
+  )
+  assert.deepEqual(
+    completeAt(deployAnalysis, 2, 3).map((item) => item.label),
+    ['change', 'query', 'root'],
+  )
+})
+
 test('补全：还没有任何区时给三个区标签', () => {
   assert.deepEqual(
     completeAt(parse(''), 0, 0).map((item) => item.label),
