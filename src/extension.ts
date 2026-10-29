@@ -3,12 +3,23 @@ import { inspectSource, type InspectResult } from './editor/inspect.ts'
 import { registerEditorSupport } from './editor/register.ts'
 import { layout, type LayoutJson } from './layout.ts'
 import { toDumpJson, type DumpJson } from './model.ts'
+import {
+  closePreview,
+  hasPreview,
+  notifyDocumentChanged,
+  notifySelectionChanged,
+  openPreview,
+  requestClick,
+  setPreviewRecorder,
+} from './panel/graph-panel.ts'
 import { parse } from './parser.ts'
 import { createFileSink, createRecorder, type Recorder } from './records.ts'
 
 let recorder: Recorder | undefined
+let extensionContext: vscode.ExtensionContext | undefined
 
 export function activate(context: vscode.ExtensionContext): void {
+  extensionContext = context
   const channel = vscode.window.createOutputChannel('Contract DAG')
   context.subscriptions.push(channel)
 
@@ -17,11 +28,17 @@ export function activate(context: vscode.ExtensionContext): void {
     appendLine: (line) => channel.appendLine(line),
     sink: sinkFile ? createFileSink(sinkFile) : undefined,
   })
+  setPreviewRecorder(recorder)
 
   context.subscriptions.push(
     vscode.commands.registerCommand('contractdag.dump', () => dumpActiveDocument()),
     vscode.commands.registerCommand('contractdag.inspect', () => inspectActiveDocument()),
     vscode.commands.registerCommand('contractdag.layout', () => layoutActiveDocument()),
+    vscode.commands.registerCommand('contractdag.preview', () => previewActiveDocument()),
+    vscode.commands.registerCommand('contractdag.reveal', (name?: unknown) => revealForScenario(name)),
+    vscode.commands.registerCommand('contractdag.closePreview', () => closePreviewForScenario()),
+    vscode.workspace.onDidChangeTextDocument((event) => notifyDocumentChanged(event.document)),
+    vscode.window.onDidChangeTextEditorSelection((event) => notifySelectionChanged(event.textEditor)),
   )
   registerEditorSupport(context)
 
@@ -30,6 +47,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
 export function deactivate(): void {
   recorder = undefined
+  extensionContext = undefined
 }
 
 /** 把当前文档解析成模型，同一份 JSON 既写记录也作为命令返回值。 */
@@ -79,4 +97,44 @@ function layoutActiveDocument(): LayoutJson | undefined {
   }
   recorder?.record('layout', { ...result })
   return result
+}
+
+/** 在文本右侧相邻的组里开一格预览。 */
+function previewActiveDocument(): boolean {
+  const document = vscode.window.activeTextEditor?.document
+  if (document === undefined || extensionContext === undefined) {
+    recorder?.record('preview', { error: 'no-active-document' })
+    return false
+  }
+
+  openPreview(extensionContext, document, vscode.ViewColumn.Beside)
+  recorder?.record('preview', { uri: document.uri.toString() })
+  return true
+}
+
+/** 面板抢了焦点时 activeTextEditor 会是空的，退回找一个开着预览的可见编辑器。 */
+function previewTargetDocument(): vscode.TextDocument | undefined {
+  const active = vscode.window.activeTextEditor?.document
+  if (active !== undefined && hasPreview(active)) return active
+  return vscode.window.visibleTextEditors.find((editor) => hasPreview(editor.document))?.document
+}
+
+/** 剧本用的合成点击：走 webview 自己那条点击回报的路。 */
+function revealForScenario(name: unknown): boolean {
+  const document = previewTargetDocument()
+  if (document === undefined || typeof name !== 'string') {
+    recorder?.record('reveal-request', { error: 'bad-argument' })
+    return false
+  }
+  const sent = requestClick(document, name)
+  recorder?.record('reveal-request', { name, sent })
+  return sent
+}
+
+function closePreviewForScenario(): boolean {
+  const document = previewTargetDocument()
+  if (document === undefined) return false
+  const closed = closePreview(document)
+  recorder?.record('preview-close', { closed })
+  return closed
 }
