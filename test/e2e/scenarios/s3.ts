@@ -10,9 +10,10 @@ export async function run(context: ScenarioContext): Promise<void> {
 
   const lines = editor.document.getText().split('\n')
   const headLine = lines.findIndex((line) => line.startsWith('[[源码构建节点'))
-  const bodyLine = headLine + 1
   context.check('样板里有连线表头', headLine > 0)
+  if (headLine <= 0) return
 
+  const bodyLine = headLine + 1
   editor.selection = new vscode.Selection(headLine, 4, headLine, 4)
   const atHead = await vscode.commands.executeCommand<InspectResult>('contractdag.inspect')
   context.check('着色段数大于零', (atHead?.tokens ?? 0) > 0)

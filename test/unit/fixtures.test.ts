@@ -29,13 +29,19 @@ test('文法错误的样例报在区名那一行', () => {
   )
 })
 
-test('五条缺陷各有一份样例，报出的正是那一条', () => {
-  assert.deepEqual(codesOf('defect-cycle.contractdag'), ['cycle', 'cycle'])
-  assert.deepEqual(codesOf('defect-duplicate-artifact.contractdag'), ['duplicate-artifact'])
-  assert.deepEqual(codesOf('defect-dangling.contractdag'), ['dangling-node'])
-  assert.deepEqual(codesOf('defect-missing-path.contractdag'), ['missing-path'])
-  assert.deepEqual(codesOf('defect-unknown-node.contractdag'), ['unknown-node'])
-})
+const defectFixtures: Array<[string, string[]]> = [
+  ['defect-cycle.contractdag', ['cycle', 'cycle']],
+  ['defect-duplicate-artifact.contractdag', ['duplicate-artifact']],
+  ['defect-dangling.contractdag', ['dangling-node']],
+  ['defect-missing-path.contractdag', ['missing-path']],
+  ['defect-unknown-node.contractdag', ['unknown-node']],
+]
+
+for (const [file, expected] of defectFixtures) {
+  test(`五条缺陷各有一份样例：${file}`, () => {
+    assert.deepEqual(codesOf(file), expected)
+  })
+}
 
 test('有缺陷的样例仍产出模型，只是诊断非空', () => {
   const analysis = parse(readFileSync(join(fixtures, 'defect-cycle.contractdag'), 'utf8'))
