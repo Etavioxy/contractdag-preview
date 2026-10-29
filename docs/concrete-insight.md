@@ -6,9 +6,9 @@
 
 ```
   ┌───────────────┐     ┌─────────────────────┐
-  │ 契约声明文件  │ 含  │ 节点契约            │
-  │ 契约文法      │────▶│ 前置 后置 不变式    │
-  │ 节点 节点契约 │     │ 验收 停止 授权 回滚 │
+  │ 契约声明文件  │ 含  │ 节点 路径 目的地    │
+  │ 契约文法      │────▶│ 连线 源 目的 产物   │
+  │ 三区          │     │ 运行 停止 回滚      │
   └───────┬───────┘     └─────────────────────┘
           │ 读作
      ┌────▼────┐
@@ -18,7 +18,7 @@
 ┌─────────▼─────────┐   ┌─────▼─────┐
 │ 契约模型          │   │ 诊断      │
 │ 节点 根 查询 变更 │   │ 结构缺陷  │
-│ 依赖边 前沿       │   └─────┬─────┘
+│ 依赖边 运行       │   └─────┬─────┘
 └─────────┬─────────┘         │
           │ 定位              │
    ┌──────▼───────┐           │
@@ -41,10 +41,11 @@
 > 全文出现的具体名称、数值都收在这一节里，正文禁止使用其他未声明数据。
 
 deploy.contractdag
-root · build · verify · install
-src-tree · build.tar · verify-report · env-ready
-/srv/app/build · /srv/app/live
-4 nodes · 3 edges · 2 change · 1 query
+源码构建节点 · 上线安装节点 · 站点巡检节点 · 流水线收尾
+build.tar · verify-report · env-ready
+/srv/app/build · /srv/app/config · /srv/app/live
+4 node · 3 link · 2 change · 1 query · 1 root
+3 次 · 8 路 · 2 次每秒 · 200
 x 80 · box 160×56
 y 24 · 100 · 176 · 252
 编辑区 720 · 预览区 640
@@ -90,84 +91,103 @@ y 24 · 100 · 176 · 252
 ## 一份声明文件长这样
 
 ```contractdag
-root require env-ready
+<nodes>
 
-node build change
-  require   src-tree
-  ensure    build.tar
-  authority /srv/app/build
-  stop      3 attempts
-  rollback  rm -f /srv/app/build/build.tar
+[源码构建节点:change]
+path        = /srv/app/build
+destination = [
+  构建包 `build.tar` 已产出，校验和已记录。
+  只写 path 里的位置。
+]
 
-node verify query
-  require   build.tar
-  ensure    verify-report
+[上线安装节点:change]
+path = [
+  /srv/app/build
+  /srv/app/config
+]
+destination = [
+  两个服务探活连续 3 次成功。
+  配置目录只增不改。
+]
 
-node install change
-  require   verify-report
-  ensure    env-ready
-  authority /srv/app/live
-  stop      1 attempt
-  rollback  restore snapshot-0412
+[站点巡检节点:query]
+path        = /srv/app/live
+destination = [
+  对外三个页面各抓取 3 次，全部返回 200 且内容哈希一致。
+  抓取并发 8 路，对同一站点不超过每秒 2 次请求。
+]
+
+[流水线收尾:root]
+destination = 部署流水线完成：`env-ready` 已落盘，巡检报告已归档。
+
+</nodes>
+
+<links>
+源码构建节点 -> 上线安装节点 : build.tar
+上线安装节点 -> 站点巡检节点 : env-ready
+站点巡检节点 -> 流水线收尾 : verify-report
+</links>
 ```
 
-§变更节点缺一行配套，这份文件就不是合法的 §契约声明文件。
+§变更节点没写 `path` 这一行，这份文件就不是合法的 §契约声明文件。§样式区整块省略，方向与间距取默认值。
 
 ## 解析把它读成什么
 
 ```json
 {
   "nodes": [
-    {"id": "root", "kind": "root", "require": ["env-ready"]},
-    {"id": "build", "kind": "change",
-     "require": ["src-tree"], "ensure": ["build.tar"],
-     "authority": ["/srv/app/build"], "stop": "3 attempts",
-     "rollback": "rm -f /srv/app/build/build.tar"},
-    {"id": "verify", "kind": "query",
-     "require": ["build.tar"], "ensure": ["verify-report"]},
-    {"id": "install", "kind": "change",
-     "require": ["verify-report"], "ensure": ["env-ready"],
-     "authority": ["/srv/app/live"], "stop": "1 attempt",
-     "rollback": "restore snapshot-0412"}
+    {"name": "源码构建节点", "kind": "change",
+     "path": ["/srv/app/build"],
+     "destination": ["构建包 `build.tar` 已产出，校验和已记录。",
+                     "只写 path 里的位置。"]},
+    {"name": "上线安装节点", "kind": "change",
+     "path": ["/srv/app/build", "/srv/app/config"],
+     "destination": ["两个服务探活连续 3 次成功。", "配置目录只增不改。"]},
+    {"name": "站点巡检节点", "kind": "query",
+     "path": ["/srv/app/live"],
+     "destination": ["对外三个页面各抓取 3 次，全部返回 200 且内容哈希一致。",
+                     "抓取并发 8 路，对同一站点不超过每秒 2 次请求。"]},
+    {"name": "流水线收尾", "kind": "root",
+     "destination": ["部署流水线完成：`env-ready` 已落盘，巡检报告已归档。"]}
   ],
-  "edges": [
-    {"from": "build", "to": "verify", "artifact": "build.tar"},
-    {"from": "verify", "to": "install", "artifact": "verify-report"},
-    {"from": "install", "to": "root", "artifact": "env-ready"}
+  "links": [
+    {"from": "源码构建节点", "to": "上线安装节点", "artifact": "build.tar"},
+    {"from": "上线安装节点", "to": "站点巡检节点", "artifact": "env-ready"},
+    {"from": "站点巡检节点", "to": "流水线收尾", "artifact": "verify-report"}
   ],
   "diagnostics": []
 }
 ```
 
-§依赖边不是画的，由产物名对上：`build.tar` 既是 `verify` 的§前置条件，也是 `build` 的§后置条件；`verify-report` 与 `env-ready` 同理。
+§依赖边只在连线区里写，产物挂在线上；§契约模型里四个 §节点 的契约没有一处提到连线——节点不知道自己的东西交给谁。
 
 ## 布局算出哪些坐标
 
 ```text
-build     x 80  y 24   160×56
-verify    x 80  y 100  160×56
-install   x 80  y 176  160×56
-root      x 80  y 252  160×56
+源码构建节点  x 80  y 24   160×56
+上线安装节点  x 80  y 100  160×56
+站点巡检节点  x 80  y 176  160×56
+流水线收尾    x 80  y 252  160×56
 ```
 
 ```
 ┌──────────────┐
-│ build        │  24
+│ 源码构建节点 │  24
 │ change       │
 └──────┬───────┘
        │ build.tar
 ┌──────▼───────┐
-│ verify       │  100
-│ query        │
-└──────┬───────┘
-       │ verify-report
-┌──────▼───────┐
-│ install      │  176
+│ 上线安装节点 │  100
 │ change       │
 └──────┬───────┘
        │ env-ready
 ┌──────▼───────┐
-│ root         │  252
+│ 站点巡检节点 │  176
+│ query        │
+└──────┬───────┘
+       │ verify-report
+┌──────▼───────┐
+│ 流水线收尾   │  252
 │ root         │
 └──────────────┘
 ```
@@ -179,28 +199,27 @@ root      x 80  y 252  160×56
 ```
 ┌────────────────────────────┬─────────────────────────┐
 │deploy.contractdag          │ ┌──────────────┐        │
-│                            │ │ build        │        │
-│ root require env-ready     │ │ change       │        │
+│                            │ │ 源码构建节点 │        │
+│<nodes>                     │ │ change       │        │
 │                            │ └──────┬───────┘        │
-│▸ node build change         │        │ build.tar      │
-│   require   src-tree       │ ┌──────▼───────┐        │
-│   ensure    build.tar      │ │ verify       │        │
-│   authority /srv/app/…     │ │ query        │        │
-│   stop      3 attempts     │ └──────┬───────┘        │
-│   rollback  rm -f /sr…     │        │ verify-report  │
+│[源码构建节点:change]       │        │ build.tar      │
+│path        = /srv/app/…    │ ┌──────▼───────┐        │
+│destination = [             │ │ 上线安装节点 │        │
+│  构建包 `build.tar` 已…    │ │ change       │        │
+│  只写 path 里的位置。      │ └──────┬───────┘        │
+│]                           │        │ env-ready      │
 │                            │ ┌──────▼───────┐        │
-│ node verify query          │ │ install      │        │
-│   require   build.tar      │ │ change       │        │
-│   ensure    verify-report  │ └──────┬───────┘        │
-│                            │        │ env-ready      │
-│ node install change        │ ┌──────▼───────┐        │
-│   require   verify-report  │ │ root         │        │
-│   ensure    env-ready      │ │ root         │        │
-│   authority /srv/app/live  │ └──────────────┘        │
-│   stop      1 attempt      │                         │
-│   rollback  restore sn…    │                         │
+│[上线安装节点:change]       │ │ 站点巡检节点 │        │
+│path = [                    │ │ query        │        │
+│  /srv/app/build            │ └──────┬───────┘        │
+│  /srv/app/config           │        │ verify-report  │
+│]                           │ ┌──────▼───────┐        │
+│destination = [             │ │ 流水线收尾   │        │
+│  两个服务探活连续 3 次…    │ │ root         │        │
+│  配置目录只增不改。        │ └──────────────┘        │
+│]                           │                         │
 │                            │                         │
 └────────────────────────────┴─────────────────────────┘
 ```
 
-`▸` 落在 `build` 的声明行上，§图视图里 `build` 的框同步高亮；反过来点那个框，光标回到 `▸` 那一行。两侧靠同一张「§节点 ↔ 声明区间」的表互查，这张表 §解析器 产出 §契约模型 时已建好，§诊断 也用它。
+光标停在 `[源码构建节点:change]` 那一行时，§图视图里 `源码构建节点` 的框同步高亮；反过来点那个框，光标回到这一行。两侧靠同一张「§节点 ↔ 声明区间」的表互查，这张表 §解析器 产出 §契约模型 时已建好，§诊断 也用它。
