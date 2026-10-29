@@ -98,6 +98,37 @@ test('断头节点：非根节点没有出边', () => {
   )
 })
 
+test('根节点不止一个也算断头：出口只能有一处', () => {
+  const source = [
+    '<nodes>',
+    '[甲:change]',
+    'path = /a',
+    'destination = 做完。',
+    '',
+    '[乙:root]',
+    'destination = 收尾。',
+    '',
+    '[丙:root]',
+    'destination = 收尾。',
+    '</nodes>',
+    '',
+    '<links>',
+    '[[甲 -> 乙]]',
+    'artifact = x',
+    '',
+    '[[甲 -> 丙]]',
+    'artifact = y',
+    '</links>',
+  ].join('\n')
+
+  const analysis = parse(source)
+
+  assert.deepEqual(
+    analysis.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.range.startLine, diagnostic.message]),
+    [['dangling-node', 8, '图里只能有一个根节点，这里有 2 个']],
+  )
+})
+
 test('变更节点缺 path', () => {
   const source = [
     '<nodes>',

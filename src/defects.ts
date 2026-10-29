@@ -53,6 +53,18 @@ function duplicateArtifacts(model: ContractModel): Diagnostic[] {
 function danglingNodes(model: ContractModel): Diagnostic[] {
   const outbound = new Set(model.links.map((link) => link.from))
   const diagnostics: Diagnostic[] = []
+
+  const extraRoot = model.nodes.filter((node) => node.kind === 'root')[1]
+  if (extraRoot !== undefined) {
+    const rootCount = model.nodes.filter((node) => node.kind === 'root').length
+    diagnostics.push({
+      layer: 'structural',
+      code: 'dangling-node',
+      message: `图里只能有一个根节点，这里有 ${rootCount} 个`,
+      range: extraRoot.range,
+    })
+  }
+
   for (const node of model.nodes) {
     if (node.kind === 'root' || outbound.has(node.name)) continue
     diagnostics.push({
