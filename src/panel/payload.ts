@@ -12,6 +12,8 @@ export interface PreviewNode {
   y: number
   width: number
   height: number
+  path: string[]
+  destination: string[]
   fill?: string
   stroke?: string
 }
@@ -65,6 +67,8 @@ export function buildPreviewPayload(analysis: Analysis, highlight: string | null
       kind: node.kind,
       line: node.range.startLine,
       ...box,
+      path: node.path,
+      destination: node.destination,
       fill: properties['fill'],
       stroke: properties['stroke'],
     })

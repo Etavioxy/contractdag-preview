@@ -45,11 +45,7 @@ export function openPreview(
   panels.set(key, panel)
 
   const scriptUri = panel.webview.asWebviewUri(vscode.Uri.joinPath(context.extensionUri, 'dist', 'media', 'preview.js'))
-  panel.webview.html = buildPreviewHtml({
-    cspSource: panel.webview.cspSource,
-    scriptUri: scriptUri.toString(),
-    nonce: createNonce(),
-  })
+  panel.webview.html = buildPreviewHtml({ scriptUri: scriptUri.toString(), nonce: createNonce() })
 
   panel.webview.onDidReceiveMessage((message: unknown) => handleMessage(document, message))
   panel.onDidDispose(() => {
@@ -94,6 +90,14 @@ export function hasPreview(document: vscode.TextDocument): boolean {
   return panels.has(document.uri.toString())
 }
 
+/** 剧本用的合成展开：让 webview 走它自己那条渲染契约分区的路。 */
+export function requestExpand(document: vscode.TextDocument, name: string): boolean {
+  const panel = panels.get(document.uri.toString())
+  if (panel === undefined) return false
+  void panel.webview.postMessage({ type: 'expand', payload: { name } })
+  return true
+}
+
 /** 剧本用的合成点击：让 webview 走它自己那条点击回报的路。 */
 export function requestClick(document: vscode.TextDocument, name: string): boolean {
   const panel = panels.get(document.uri.toString())
@@ -118,7 +122,7 @@ function handleMessage(document: vscode.TextDocument, message: unknown): void {
       refresh(document)
       return
     case 'state':
-      recorder?.record('preview-state', (payload ?? {}) as Record<string, unknown>)
+      recorder?.record('preview-state', toStateRecord(payload))
       return
     case 'reveal': {
       const name = (payload as { name?: unknown } | undefined)?.name
@@ -164,6 +168,25 @@ async function revealNode(document: vscode.TextDocument, name: string): Promise<
   })
   editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport)
   recorder?.record('reveal', { name, line: node.range.startLine })
+}
+
+/** webview 来的东西只按约定字段收，其余一律丢掉。 */
+function toStateRecord(payload: unknown): Record<string, unknown> {
+  const source = (typeof payload === 'object' && payload !== null ? payload : {}) as Record<string, unknown>
+  const names = Array.isArray(source['names']) ? source['names'].filter((name): name is string => typeof name === 'string') : []
+  const expanded = Array.isArray(source['expanded'])
+    ? source['expanded'].filter((name): name is string => typeof name === 'string')
+    : []
+
+  return {
+    nodes: typeof source['nodes'] === 'number' ? source['nodes'] : -1,
+    edges: typeof source['edges'] === 'number' ? source['edges'] : -1,
+    contractLines: typeof source['contractLines'] === 'number' ? source['contractLines'] : -1,
+    names,
+    expanded,
+    highlight: typeof source['highlight'] === 'string' ? source['highlight'] : null,
+    viewBox: typeof source['viewBox'] === 'string' ? source['viewBox'] : '',
+  }
 }
 
 function createNonce(): string {

@@ -239,4 +239,13 @@ async function runS6(
     2_000,
   )
   check('光标所在节点在图上高亮', highlighted !== undefined)
+
+  const expandedRequest = await vscode.commands.executeCommand<boolean>('contractdag.expand', '源码构建节点')
+  check('合成展开送进了 webview', expandedRequest === true)
+  const expanded = await waitForRecord(
+    (record) => record['event'] === 'preview-state' && Number(record['contractLines']) > 0,
+    2_000,
+  )
+  check('展开后框里画出契约分区', expanded !== undefined)
+  check('契约分区画出三行以上', Number(expanded?.['contractLines']) >= 3)
 }

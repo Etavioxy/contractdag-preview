@@ -10,6 +10,7 @@ import {
   notifySelectionChanged,
   openPreview,
   requestClick,
+  requestExpand,
   setPreviewRecorder,
 } from './panel/graph-panel.ts'
 import { parse } from './parser.ts'
@@ -36,6 +37,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('contractdag.layout', () => layoutActiveDocument()),
     vscode.commands.registerCommand('contractdag.preview', () => previewActiveDocument()),
     vscode.commands.registerCommand('contractdag.reveal', (name?: unknown) => revealForScenario(name)),
+    vscode.commands.registerCommand('contractdag.expand', (name?: unknown) => expandForScenario(name)),
     vscode.commands.registerCommand('contractdag.closePreview', () => closePreviewForScenario()),
     vscode.workspace.onDidChangeTextDocument((event) => notifyDocumentChanged(event.document)),
     vscode.window.onDidChangeTextEditorSelection((event) => notifySelectionChanged(event.textEditor)),
@@ -128,6 +130,15 @@ function revealForScenario(name: unknown): boolean {
   }
   const sent = requestClick(document, name)
   recorder?.record('reveal-request', { name, sent })
+  return sent
+}
+
+/** 剧本用的合成展开：让 webview 把契约分区画出来。 */
+function expandForScenario(name: unknown): boolean {
+  const document = previewTargetDocument()
+  if (document === undefined || typeof name !== 'string') return false
+  const sent = requestExpand(document, name)
+  recorder?.record('expand-request', { name, sent })
   return sent
 }
 

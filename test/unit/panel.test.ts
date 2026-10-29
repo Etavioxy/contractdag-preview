@@ -36,6 +36,15 @@ test('面板数据：四个框落在样板的坐标上，三条边的两端贴�
   assert.equal(payload.highlight, null)
 })
 
+test('面板数据：契约正文随节点带过去', () => {
+  const payload = buildPreviewPayload(deploy)
+  assert.ok(payload)
+
+  assert.deepEqual(payload.nodes[0]?.path, ['/srv/app/build'])
+  assert.deepEqual(payload.nodes[0]?.destination, ['构建包 `build.tar` 已产出，校验和已记录。', '只写 path 里的位置。'])
+  assert.deepEqual(payload.nodes[3]?.path, [])
+})
+
 test('面板数据：高亮的名字随参数带过去', () => {
   assert.equal(buildPreviewPayload(deploy, '站点巡检节点')?.highlight, '站点巡检节点')
 })
@@ -73,7 +82,6 @@ test('文法错误时不产出新图', () => {
 
 test('面板 HTML 带 CSP、nonce 与脚本地址', () => {
   const html = buildPreviewHtml({
-    cspSource: 'vscode-resource://x',
     scriptUri: 'vscode-resource://x/dist/media/preview.js',
     nonce: 'abc123',
   })

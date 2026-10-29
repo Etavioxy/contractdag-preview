@@ -1,7 +1,6 @@
 /** 面板的 HTML 骨架：CSP、nonce、脚本地址都由调用方给，不在模板里猜。 */
 
 export interface PreviewHtmlOptions {
-  cspSource: string
   scriptUri: string
   nonce: string
 }
@@ -11,7 +10,7 @@ export function buildPreviewHtml(options: PreviewHtmlOptions): string {
 <html lang="zh">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${options.cspSource} 'unsafe-inline'; script-src 'nonce-${options.nonce}';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-${options.nonce}';">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Contract DAG Preview</title>
 <style>
@@ -24,6 +23,9 @@ export function buildPreviewHtml(options: PreviewHtmlOptions): string {
   .node .kind { fill: var(--vscode-descriptionForeground, #999); font-size: 11px; }
   .edge line { stroke: var(--vscode-editorLineNumber-foreground, #666); stroke-width: 1.5; }
   .edge text { fill: var(--vscode-descriptionForeground, #999); font-size: 11px; text-anchor: middle; }
+  .chevron { fill: var(--vscode-descriptionForeground, #999); font-size: 11px; cursor: pointer; }
+  .contract rect { fill: var(--vscode-textCodeBlock-background, #1b1b1b); stroke: var(--vscode-editorWidget-border, #555); stroke-width: 1; }
+  .contract text { fill: var(--vscode-editor-foreground); font-size: 10px; }
   #stale { margin: 8px; color: var(--vscode-errorForeground, #f66); font-size: 12px; }
 </style>
 </head>

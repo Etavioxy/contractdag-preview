@@ -18,7 +18,7 @@ const requiredRecords: Record<string, string[]> = {
   s3: ['inspect'],
   s4: ['layout'],
   s5: ['preview', 'preview-state'],
-  s6: ['preview', 'preview-state', 'reveal'],
+  s6: ['preview', 'preview-state', 'reveal', 'expand-request'],
 }
 
 interface RecordLine {

@@ -9,6 +9,8 @@ const namespace = 'http://www.w3.org/2000/svg'
 
 let current: PreviewPayload | null = null
 let highlighted: string | null = null
+let contractLines = 0
+const expanded = new Set<string>()
 
 const graph = document.getElementById('graph') as unknown as SVGSVGElement
 const stale = document.getElementById('stale') as HTMLElement
@@ -33,6 +35,7 @@ function render(payload: PreviewPayload): void {
   graph.setAttribute('viewBox', `0 0 ${payload.width} ${payload.height}`)
   graph.style.fontFamily = payload.font
   graph.replaceChildren()
+  contractLines = 0
 
   const edges = element('g', { class: 'edges' })
   for (const edge of payload.edges) {
@@ -62,12 +65,39 @@ function render(payload: PreviewPayload): void {
     })
     kind.textContent = node.kind
 
-    group.append(rect, name, kind)
+    const chevron = element('text', { class: 'chevron', x: node.x + node.width - 12, y: node.y + 14, 'text-anchor': 'middle' })
+    chevron.textContent = expanded.has(node.name) ? '▾' : '▸'
+    chevron.addEventListener('click', (event) => {
+      event.stopPropagation()
+      expandNode(node.name)
+    })
+
+    group.append(rect, name, kind, chevron)
     group.addEventListener('click', () => post({ type: 'reveal', payload: { name: node.name } }))
     graph.append(group)
+
+    if (expanded.has(node.name)) graph.append(contractPanel(node))
   }
 
   postState()
+}
+
+function contractPanel(node: PreviewPayload['nodes'][number]): SVGGElement {
+  const lines = [...node.path.map((entry) => `path  ${entry}`), ...node.destination]
+  const group = element('g', { class: 'contract', 'data-name': node.name })
+  group.append(element('rect', { x: node.x, y: node.y + node.height + 3, width: node.width, height: lines.length * 14 + 12, rx: 4 }))
+  lines.forEach((line, index) => {
+    const text = element('text', { x: node.x + 8, y: node.y + node.height + 18 + index * 14 })
+    text.textContent = line.length > 22 ? `${line.slice(0, 22)}…` : line
+    group.append(text)
+    contractLines += 1
+  })
+  return group
+}
+
+function expandNode(name: string): void {
+  expanded.add(name)
+  if (current !== null) render(current)
 }
 
 function applyHighlight(name: string | null): void {
@@ -83,8 +113,12 @@ function postState(): void {
     type: 'state',
     payload: {
       nodes: current?.nodes.length ?? 0,
+      edges: current?.edges.length ?? 0,
       names: current?.nodes.map((node) => node.name) ?? [],
       highlight: highlighted,
+      viewBox: graph.getAttribute('viewBox') ?? '',
+      contractLines,
+      expanded: [...expanded],
     },
   })
 }
@@ -108,6 +142,9 @@ window.addEventListener('message', (event: MessageEvent) => {
       break
     case 'click':
       post({ type: 'reveal', payload: { name: (message.payload as { name: string }).name } })
+      break
+    case 'expand':
+      expandNode((message.payload as { name: string }).name)
       break
     default:
       break
