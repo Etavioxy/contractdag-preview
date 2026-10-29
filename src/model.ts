@@ -67,13 +67,6 @@ export interface Diagnostic {
   range: SourceRange
 }
 
-export interface Analysis {
-  /** 文法不合法时没有模型：连模型都产不出来。 */
-  model?: ContractModel
-  style: StyleSheet
-  diagnostics: Diagnostic[]
-}
-
 export const defaultGap = 20
 
 export const directionValues: readonly StyleSheet['direction'][] = ['TB', 'BT', 'LR', 'RL']

@@ -1,6 +1,7 @@
 /** 折叠：区各一段，节点与连线各一段。 */
 
-import { scanLines, type ScannedLine } from './scan.ts'
+import type { Analysis } from '../parser.ts'
+import type { ScannedLine } from '../scan.ts'
 
 export interface FoldRange {
   start: number
@@ -9,8 +10,8 @@ export interface FoldRange {
 
 const bodyRoles = new Set<ScannedLine['role']>(['key-value', 'value-open', 'value-item', 'value-close'])
 
-export function collectFoldingRanges(source: string): FoldRange[] {
-  const scanned = scanLines(source)
+export function collectFoldingRanges(analysis: Analysis): FoldRange[] {
+  const scanned = analysis.lines
   const ranges: FoldRange[] = []
 
   for (const [position, line] of scanned.entries()) {

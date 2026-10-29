@@ -1,6 +1,6 @@
 /** 呈现用的逐行扫描：只认行的形态，不产出任何契约模型事实。 */
 
-import { looksLikeKeyValue, parseKeyValue, parseNodeHead, regionClose, regionOpen } from '../syntax.ts'
+import { looksLikeKeyValue, parseKeyValue, parseNodeHead, regionClose, regionOpen } from './syntax.ts'
 
 export type RegionName = 'nodes' | 'links' | 'style'
 
@@ -34,7 +34,7 @@ function asRegion(name: string | undefined): RegionName | undefined {
 }
 
 export function scanLines(source: string): ScannedLine[] {
-  const lines = source.replace(/^\uFEFF/, '').split(/\r?\n/)
+  const lines = source.split(/\r?\n/)
   const scanned: ScannedLine[] = []
   let region: RegionName | 'none' = 'none'
   let inValueBlock = false

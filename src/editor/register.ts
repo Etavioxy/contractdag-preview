@@ -1,6 +1,7 @@
-/** 把三个纯函数挂成 provider；provider 只做类型搬运。 */
+/** 把三个纯函数挂成 provider；provider 只负责解析一次富文本、搬运类型。 */
 
 import * as vscode from 'vscode'
+import { parse } from '../parser.ts'
 import { completeAt } from './completion.ts'
 import { collectFoldingRanges } from './folding.ts'
 import { collectTokens, tokenTypes } from './tokens.ts'
@@ -17,7 +18,7 @@ export function registerEditorSupport(context: vscode.ExtensionContext): void {
       {
         provideDocumentSemanticTokens(document) {
           const builder = new vscode.SemanticTokensBuilder(legend)
-          for (const span of collectTokens(document.getText())) {
+          for (const span of collectTokens(parse(document.getText()))) {
             builder.push(
               span.line,
               span.start,
@@ -33,12 +34,12 @@ export function registerEditorSupport(context: vscode.ExtensionContext): void {
     ),
     vscode.languages.registerFoldingRangeProvider(selector, {
       provideFoldingRanges(document) {
-        return collectFoldingRanges(document.getText()).map((range) => new vscode.FoldingRange(range.start, range.end))
+        return collectFoldingRanges(parse(document.getText())).map((range) => new vscode.FoldingRange(range.start, range.end))
       },
     }),
     vscode.languages.registerCompletionItemProvider(selector, {
       provideCompletionItems(document, position) {
-        return completeAt(document.getText(), position.line, position.character).map((suggestion) => {
+        return completeAt(parse(document.getText()), position.line, position.character).map((suggestion) => {
           const item = new vscode.CompletionItem(suggestion.label, vscode.CompletionItemKind.Keyword)
           item.detail = suggestion.detail
           item.insertText = suggestion.insertText

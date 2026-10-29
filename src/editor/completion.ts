@@ -1,6 +1,7 @@
 /** 补全：按光标所在区给候选，节点名取自文档里已经写出的表头。 */
 
-import { nodeNamesOf, scanLines } from './scan.ts'
+import type { Analysis } from '../parser.ts'
+import { nodeNamesOf } from '../scan.ts'
 
 export interface CompletionSuggestion {
   label: string
@@ -18,10 +19,11 @@ function suggestion(label: string, detail: string): CompletionSuggestion {
   return { label, detail, insertText: label }
 }
 
-export function completeAt(source: string, line: number, character: number): CompletionSuggestion[] {
-  const scanned = scanLines(source)
+export function completeAt(analysis: Analysis, line: number, character: number): CompletionSuggestion[] {
+  const scanned = analysis.lines
   const current = scanned[line]
   if (current === undefined) return []
+  if (current.role === 'value-item' || current.role === 'value-close' || current.role === 'comment') return []
 
   const prefix = current.text.slice(0, character).trimStart()
   const names = nodeNamesOf(scanned)

@@ -4,14 +4,24 @@ import { inspect } from './defects.ts'
 import {
   createStyleSheet,
   directionValues,
-  type Analysis,
   type ContractModel,
   type DagNode,
   type DependencyEdge,
+  type Diagnostic,
   type SourceRange,
   type StyleSheet,
 } from './model.ts'
+import { scanLines, type ScannedLine } from './scan.ts'
 import * as syntax from './syntax.ts'
+
+/** 解析器交出的全部东西：模型、样式、诊断，以及逐行角色（编辑器直接消费它）。 */
+export interface Analysis {
+  /** 文法不合法时没有模型：连模型都产不出来。 */
+  model?: ContractModel
+  style: StyleSheet
+  diagnostics: Diagnostic[]
+  lines: ScannedLine[]
+}
 
 const knownRegions = ['nodes', 'links', 'style']
 
@@ -47,14 +57,16 @@ function skipIgnorable(lines: string[], from: number): number {
 
 export function parse(source: string): Analysis {
   const style = createStyleSheet()
+  const lines = scanLines(source)
   try {
     const model = buildModel(source.replace(/^\uFEFF/, '').split(/\r?\n/), style)
-    return { model, style, diagnostics: inspect(model) }
+    return { model, style, diagnostics: inspect(model), lines }
   } catch (error) {
     if (error instanceof SyntaxFailure) {
       return {
         style,
         diagnostics: [{ layer: 'syntax', code: error.code, message: error.message, range: error.range }],
+        lines,
       }
     }
     throw error

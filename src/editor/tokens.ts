@@ -1,7 +1,8 @@
-/** 语义着色：从逐行扫描算出每一段的类型，供 provider 直接打包。 */
+/** 语义着色：从解析器交出的逐行角色算出每一段的类型，供 provider 直接打包。 */
 
+import type { Analysis } from '../parser.ts'
+import type { ScannedLine } from '../scan.ts'
 import { parseKeyValue, parseLinkHead, parseNodeHead } from '../syntax.ts'
-import { scanLines, type ScannedLine } from './scan.ts'
 
 export const tokenTypes = ['keyword', 'class', 'property', 'string', 'comment', 'enumMember', 'operator'] as const
 
@@ -25,10 +26,10 @@ function at(line: ScannedLine, needle: string, from = line.indent): number {
   return found === -1 ? line.indent : found
 }
 
-export function collectTokens(source: string): TokenSpan[] {
+export function collectTokens(analysis: Analysis): TokenSpan[] {
   const spans: TokenSpan[] = []
 
-  for (const line of scanLines(source)) {
+  for (const line of analysis.lines) {
     switch (line.role) {
       case 'region-open':
       case 'region-close':
