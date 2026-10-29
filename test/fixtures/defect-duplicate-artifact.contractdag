@@ -1,0 +1,18 @@
+<nodes>
+
+[甲:change]
+path = /srv/dup
+destination = 同一份东西交了两遍。
+
+[乙:root]
+destination = 出口。
+
+</nodes>
+
+<links>
+[[甲 -> 乙]]
+artifact = same-name
+
+[[甲 -> 乙]]
+artifact = same-name
+</links>
