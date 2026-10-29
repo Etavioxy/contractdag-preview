@@ -22,6 +22,10 @@
       {
         "command": "contractdag.inspect",
         "title": "Contract DAG: 观测编辑器三样"
+      },
+      {
+        "command": "contractdag.layout",
+        "title": "Contract DAG: 计算图布局"
       }
     ],
     "languages": [
@@ -57,5 +61,8 @@
     "@vscode/test-electron": "^3.1.0",
     "esbuild": "^0.28.2",
     "typescript": "^7.0.2"
+  },
+  "dependencies": {
+    "d3-dag": "^1.2.2"
   }
 }
