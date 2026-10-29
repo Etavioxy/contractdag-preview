@@ -11,6 +11,7 @@ export interface ScenarioContext {
     timeoutMs?: number,
   ): Promise<Record<string, unknown> | undefined>
   fixturePath(): string
+  isExtensionActive(): boolean
 }
 
 export function sinkPath(): string {

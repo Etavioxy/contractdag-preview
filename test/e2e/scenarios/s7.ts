@@ -15,6 +15,7 @@ export async function run(context: ScenarioContext): Promise<void> {
   const document = await vscode.workspace.openTextDocument(target)
   const editor = await vscode.window.showTextDocument(document, vscode.ViewColumn.One)
   context.check('按 contract-dag 语言打开', document.languageId === 'contract-dag')
+  context.check('打开契约文件就激活了扩展', await waitUntil(() => context.isExtensionActive()))
 
   await vscode.commands.executeCommand('contractdag.preview')
   const state = await context.waitForRecord((record) => record['event'] === 'preview-state')

@@ -44,6 +44,7 @@ export async function run(): Promise<void> {
       if (fixture === undefined) throw new Error('缺少 CONTRACTDAG_E2E_FIXTURE')
       return fixture
     },
+    isExtensionActive: () => vscode.extensions.getExtension(EXTENSION_ID)?.isActive === true,
   }
 
   const extension = vscode.extensions.getExtension(EXTENSION_ID)
@@ -52,7 +53,8 @@ export async function run(): Promise<void> {
     return hold()
   }
 
-  await extension.activate()
+  // S7 要验「打开 .contractdag 就激活」，所以这一幕不提前手动激活。
+  if (scenario !== 's7') await extension.activate()
 
   const runner = runners[scenario]
   try {
