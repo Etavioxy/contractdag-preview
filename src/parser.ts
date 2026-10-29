@@ -3,6 +3,7 @@
 import { inspect } from './defects.ts'
 import {
   createStyleSheet,
+  directionValues,
   type Analysis,
   type ContractModel,
   type DagNode,
@@ -240,6 +241,9 @@ function buildLink(head: syntax.LinkHead, range: SourceRange, entries: Entry[]):
   const keyRanges: Record<string, SourceRange> = {}
 
   for (const entry of entries) {
+    if (entry.key === 'from' || entry.key === 'to') {
+      throw fail('reserved-key', `连线区不认 ${entry.key}：端点已经写在表头里`, entry.keyRange)
+    }
     properties[entry.key] = entry.values[0] ?? ''
     keyRanges[entry.key] = entry.keyRange
   }
@@ -270,14 +274,23 @@ function readStyle(lines: string[], from: number, style: StyleSheet): number {
 
 function applyStyleCommand(style: StyleSheet, command: syntax.StyleCommand, range: SourceRange): void {
   switch (command.kind) {
-    case 'direction':
-      style.direction = command.direction
+    case 'direction': {
+      const value = command.value.toUpperCase()
+      if (!directionValues.includes(value as StyleSheet['direction'])) {
+        throw fail('bad-style-value', `direction 只有 ${directionValues.join(' / ')}，写成了 ${command.value}`, range)
+      }
+      style.direction = value as StyleSheet['direction']
       return
-    case 'gap':
-      style.gap = command.gap
+    }
+    case 'gap': {
+      if (!/^\d+$/.test(command.value)) {
+        throw fail('bad-style-value', `gap 要写一个非负整数，写成了 ${command.value}`, range)
+      }
+      style.gap = Number(command.value)
       return
+    }
     case 'font':
-      style.font = command.font
+      style.font = command.value
       return
     case 'classDef':
       style.classDefs[command.name] = command.properties

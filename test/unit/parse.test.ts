@@ -67,7 +67,9 @@ test('dump 出的 JSON 与 docs/concrete-insight.md 的模型一致', () => {
 })
 
 test('注释与空行不进模型，也不改动位置以外的任何东西', () => {
-  const commented = deploy.replace('<nodes>', '<nodes>\n\n# 三个节点各管一段').replace('[上线安装节点:change] fnord', '')
+  const commented = deploy
+    .replace('<nodes>', '<nodes>\n\n# 三个节点各管一段')
+    .replace('[[上线安装节点 -> 站点巡检节点]]', '# 这一段交给巡检\n[[上线安装节点 -> 站点巡检节点]]')
 
   const analysis = parse(commented)
   const plain = parse(deploy)
@@ -169,6 +171,12 @@ const broken: Array<{ name: string; source: string; code: string; line: number }
     source: ['<nodes>', '[甲:root]', 'destination = 做完。', '</nodes>', '<links>', '[[甲 -> 甲]]', '</links>'].join('\n'),
     code: 'missing-artifact',
     line: 5,
+  },
+  {
+    name: '连线区写了端点键',
+    source: ['<nodes>', '[甲:root]', 'destination = 收尾。', '</nodes>', '<links>', '[[甲 -> 甲]]', 'artifact = x', 'from = 冒名', '</links>'].join('\n'),
+    code: 'reserved-key',
+    line: 7,
   },
   {
     name: '样式区不认的关键字',

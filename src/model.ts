@@ -74,8 +74,12 @@ export interface Analysis {
   diagnostics: Diagnostic[]
 }
 
+export const defaultGap = 20
+
+export const directionValues: readonly StyleSheet['direction'][] = ['TB', 'BT', 'LR', 'RL']
+
 export function createStyleSheet(): StyleSheet {
-  return { direction: 'TB', gap: 20, classDefs: {}, classes: [], linkStyles: [] }
+  return { direction: 'TB', gap: defaultGap, classDefs: {}, classes: [], linkStyles: [] }
 }
 
 export interface DumpNode {
@@ -100,7 +104,14 @@ export function toDumpJson(model: ContractModel, diagnostics: Diagnostic[]): Dum
       path: node.path,
       destination: node.destination,
     })),
-    links: model.links.map((link) => ({ from: link.from, to: link.to, ...link.properties })),
+    links: model.links.map((link) => {
+      const record: Record<string, string> = { from: link.from, to: link.to }
+      for (const [key, value] of Object.entries(link.properties)) {
+        if (key === 'from' || key === 'to') continue
+        record[key] = value
+      }
+      return record
+    }),
     diagnostics,
   }
 }

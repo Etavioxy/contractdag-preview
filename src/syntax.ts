@@ -94,14 +94,13 @@ export function parseKeyValue(text: string): Parsed<KeyValue> {
 }
 
 export type StyleCommand =
-  | { kind: 'direction'; direction: StyleSheet['direction'] }
-  | { kind: 'gap'; gap: number }
-  | { kind: 'font'; font: string }
+  | { kind: 'direction'; value: string }
+  | { kind: 'gap'; value: string }
+  | { kind: 'font'; value: string }
   | { kind: 'classDef'; name: string; properties: Record<string, string> }
   | { kind: 'class'; node: string; classes: string[] }
   | { kind: 'linkStyle'; from: string; to: string; properties: Record<string, string> }
 
-const directionValues: readonly StyleSheet['direction'][] = ['TB', 'BT', 'LR', 'RL']
 const propertyText = /^[A-Za-z][A-Za-z0-9-]*:[^,]*(,[A-Za-z][A-Za-z0-9-]*:[^,]*)*$/
 
 function parseProperties(text: string): Parsed<Record<string, string>> {
@@ -131,19 +130,12 @@ export function parseStyleCommand(text: string): Parsed<StyleCommand> {
   const rest = trimmed.slice(space).trim()
 
   switch (keyword) {
-    case 'direction': {
-      const value = rest.toUpperCase()
-      if (!directionValues.includes(value as StyleSheet['direction'])) {
-        return bad('bad-style-value', `direction 只有 ${directionValues.join(' / ')}`)
-      }
-      return ok({ kind: 'direction', direction: value as StyleSheet['direction'] })
-    }
-    case 'gap': {
-      if (!/^\d+$/.test(rest)) return bad('bad-style-value', 'gap 要写一个非负整数')
-      return ok({ kind: 'gap', gap: Number(rest) })
-    }
+    case 'direction':
+      return ok({ kind: 'direction', value: rest })
+    case 'gap':
+      return ok({ kind: 'gap', value: rest })
     case 'font':
-      return ok({ kind: 'font', font: rest })
+      return ok({ kind: 'font', value: rest })
     case 'classDef': {
       const parts = rest.split(/\s+/)
       const name = parts[0] ?? ''
