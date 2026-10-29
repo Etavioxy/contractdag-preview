@@ -10,11 +10,38 @@
     "vscode": "^1.90.0"
   },
   "main": "./dist/extension.cjs",
+  "activationEvents": [
+    "onLanguage:contract-dag"
+  ],
   "contributes": {
     "commands": [
       {
         "command": "contractdag.dump",
         "title": "Contract DAG: 导出契约模型"
+      },
+      {
+        "command": "contractdag.inspect",
+        "title": "Contract DAG: 观测编辑器三样"
+      }
+    ],
+    "languages": [
+      {
+        "id": "contract-dag",
+        "aliases": [
+          "Contract DAG",
+          "contractdag"
+        ],
+        "extensions": [
+          ".contractdag"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "contract-dag",
+        "scopeName": "source.contractdag",
+        "path": "./syntaxes/contract-dag.tmLanguage.json"
       }
     ]
   },
