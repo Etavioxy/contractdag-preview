@@ -42,18 +42,32 @@ async function waitForRecords(
   return []
 }
 
-/** 只按 PID 收自己起的那个实例：先 SIGTERM，超时才 SIGKILL。 */
-async function terminateSandbox(child: ChildProcess): Promise<string> {
-  if (child.exitCode !== null || child.signalCode !== null) return 'already-exited'
+interface SandboxClose {
+  how: 'already-exited' | 'sigterm' | 'sigkill' | 'stuck'
+  code: number | null
+  signal: NodeJS.Signals | null
+}
 
-  const closed = new Promise<void>((resolve) => child.once('close', () => resolve()))
+/** 只按 PID 收自己起的那个实例：先 SIGTERM，超时才 SIGKILL。 */
+async function terminateSandbox(child: ChildProcess): Promise<SandboxClose> {
+  if (child.exitCode !== null || child.signalCode !== null) {
+    return { how: 'already-exited', code: child.exitCode, signal: child.signalCode }
+  }
+
+  let close: [number | null, NodeJS.Signals | null] = [null, null]
+  const closed = new Promise<void>((resolve) =>
+    child.once('close', (code, signal) => {
+      close = [code, signal]
+      resolve()
+    }),
+  )
   child.kill('SIGTERM')
   const polite = await Promise.race([closed.then(() => 'closed' as const), delay(killTimeoutMs).then(() => 'timeout' as const)])
-  if (polite === 'closed') return 'sigterm'
+  if (polite === 'closed') return { how: 'sigterm', code: close[0], signal: close[1] }
 
   child.kill('SIGKILL')
   const forced = await Promise.race([closed.then(() => 'closed' as const), delay(killTimeoutMs).then(() => 'timeout' as const)])
-  return forced === 'closed' ? 'sigkill' : 'stuck'
+  return { how: forced === 'closed' ? 'sigkill' : 'stuck', code: close[0], signal: close[1] }
 }
 
 function sandboxEnv(sinkFile: string): NodeJS.ProcessEnv {
@@ -96,7 +110,7 @@ async function main(): Promise<void> {
 
   const startedAt = Date.now()
   let verdict = 'FAIL'
-  let termination = 'not-needed'
+  let termination: SandboxClose = { how: 'stuck', code: null, signal: null }
   try {
     const suiteRecords = await waitForRecords(sinkFile, ['suite-ready', 'suite-error'], suiteTimeoutMs)
     termination = await terminateSandbox(child)
@@ -111,11 +125,13 @@ async function main(): Promise<void> {
       ['命令写过 dump', present('dump')],
       ['沙盒报过 suite-ready', present('suite-ready')],
       ['沙盒没报 suite-error', failure === undefined],
-      ['按 PID 终止了实例', termination === 'sigterm' || termination === 'sigkill'],
+      ['按 PID 终止了实例', termination.how === 'sigterm' || termination.how === 'sigkill'],
+      ['观察到实例已关闭', child.exitCode !== null || child.signalCode !== null],
     ]
     verdict = checks.every(([, ok]) => ok) ? 'PASS' : 'FAIL'
 
-    console.log(`elapsed: ${Date.now() - startedAt}ms  termination: ${termination}`)
+    console.log(`elapsed: ${Date.now() - startedAt}ms  termination: ${termination.how}`)
+    console.log(`sandbox close: code=${String(termination.code)} signal=${String(termination.signal)}`)
     for (const record of records) console.log(`  record ${JSON.stringify(record)}`)
     for (const [label, ok] of checks) console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`)
     if (verdict === 'FAIL') {
@@ -126,6 +142,7 @@ async function main(): Promise<void> {
     if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL')
   }
 
+  console.log(`script exit: ${verdict === 'PASS' ? 0 : 1}`)
   console.log(`verdict: ${verdict}`)
   if (verdict !== 'PASS') process.exitCode = 1
 }
