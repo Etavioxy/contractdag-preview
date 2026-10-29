@@ -1,4 +1,6 @@
 import * as vscode from 'vscode'
+import { inspectSource, type InspectResult } from './editor/inspect.ts'
+import { registerEditorSupport } from './editor/register.ts'
 import { toDumpJson, type DumpJson } from './model.ts'
 import { parse } from './parser.ts'
 import { createFileSink, createRecorder, type Recorder } from './records.ts'
@@ -17,7 +19,9 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand('contractdag.dump', () => dumpActiveDocument()),
+    vscode.commands.registerCommand('contractdag.inspect', () => inspectActiveDocument()),
   )
+  registerEditorSupport(context)
 
   recorder.record('activated', { version: context.extension.packageJSON.version })
 }
@@ -38,4 +42,18 @@ function dumpActiveDocument(): DumpJson | undefined {
   const dump = toDumpJson(analysis.model ?? { nodes: [], links: [] }, analysis.diagnostics)
   recorder?.record('dump', { ...dump })
   return dump
+}
+
+/** 把着色段数、折叠区间数、光标处补全候选打成一条记录。 */
+function inspectActiveDocument(): InspectResult | undefined {
+  const editor = vscode.window.activeTextEditor
+  if (editor === undefined) {
+    recorder?.record('inspect', { error: 'no-active-document' })
+    return undefined
+  }
+
+  const { line, character } = editor.selection.active
+  const result = inspectSource(editor.document.getText(), line, character)
+  recorder?.record('inspect', { ...result })
+  return result
 }

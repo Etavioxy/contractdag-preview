@@ -11,6 +11,13 @@ const suiteTimeoutMs = 60_000
 const killTimeoutMs = 5_000
 const tailLines = 20
 
+/** 每个剧本至少要留下哪类记录，别的判据都由剧本自己的 check 说。 */
+const requiredRecords: Record<string, string[]> = {
+  s1: ['dump'],
+  s2: ['dump'],
+  s3: ['inspect'],
+}
+
 interface RecordLine {
   event: string
   [key: string]: unknown
@@ -130,7 +137,7 @@ async function main(): Promise<void> {
 
     const checks: Array<[string, boolean]> = [
       ['activation 写过 activated', present('activated')],
-      ['命令写过 dump', present('dump')],
+      ...(requiredRecords[scenario] ?? []).map((event): [string, boolean] => [`命令写过 ${event}`, present(event)]),
       ['沙盒报过 suite-ready', present('suite-ready')],
       ['沙盒没报 suite-error', failure === undefined],
       ['剧本的检查项全过', failedChecks.length === 0],
