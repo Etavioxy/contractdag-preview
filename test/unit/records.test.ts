@@ -35,3 +35,12 @@ test('没有文件去处时只写输出通道，不抛错', () => {
 
   assert.equal(channel.length, 1)
 })
+
+test('payload 不能覆盖事件名与时刻', () => {
+  const recorder = createRecorder({ appendLine: () => {} })
+
+  const parsed = JSON.parse(recorder.record('activated', { event: 'fake', at: 'fake' })) as Record<string, unknown>
+
+  assert.equal(parsed['event'], 'activated')
+  assert.equal(typeof parsed['at'], 'number')
+})

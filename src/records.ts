@@ -19,7 +19,7 @@ export interface RecorderOptions {
 export function createRecorder(options: RecorderOptions): Recorder {
   return {
     record(event, payload = {}) {
-      const line = JSON.stringify({ event, ...payload, at: Date.now() })
+      const line = JSON.stringify({ ...payload, event, at: Date.now() })
       options.appendLine(line)
       options.sink?.append(line)
       return line
