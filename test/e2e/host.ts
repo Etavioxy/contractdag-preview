@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { downloadAndUnzipVSCode } from '@vscode/test-electron'
 
 const repoRoot = process.cwd()
+const scenario = process.argv[2] ?? 's1'
 const pollIntervalMs = 100
 const suiteTimeoutMs = 60_000
 const killTimeoutMs = 5_000
@@ -71,7 +72,12 @@ async function terminateSandbox(child: ChildProcess): Promise<SandboxClose> {
 }
 
 function sandboxEnv(sinkFile: string): NodeJS.ProcessEnv {
-  const env: NodeJS.ProcessEnv = { ...process.env, CONTRACTDAG_RECORD_SINK: sinkFile }
+  const env: NodeJS.ProcessEnv = {
+    ...process.env,
+    CONTRACTDAG_RECORD_SINK: sinkFile,
+    CONTRACTDAG_E2E_SCENARIO: scenario,
+    CONTRACTDAG_E2E_FIXTURE: join(repoRoot, 'test/fixtures/deploy.contractdag'),
+  }
   for (const key of Object.keys(env)) {
     if (key.startsWith('VSCODE_') || key === 'ELECTRON_RUN_AS_NODE') delete env[key]
   }
@@ -119,20 +125,25 @@ async function main(): Promise<void> {
     const events = records.map((record) => record.event)
     const present = (event: string): boolean => events.includes(event)
     const failure = suiteRecords.find((record) => record.event === 'suite-error')
+    const checkRecords = records.filter((record) => record.event === 'check')
+    const failedChecks = checkRecords.filter((record) => record['ok'] !== true)
 
     const checks: Array<[string, boolean]> = [
       ['activation 写过 activated', present('activated')],
       ['命令写过 dump', present('dump')],
       ['沙盒报过 suite-ready', present('suite-ready')],
       ['沙盒没报 suite-error', failure === undefined],
+      ['剧本的检查项全过', failedChecks.length === 0],
       ['按 PID 终止了实例', termination.how === 'sigterm' || termination.how === 'sigkill'],
       ['观察到实例已关闭', child.exitCode !== null || child.signalCode !== null],
     ]
+    if (scenario !== 's1') checks.push(['剧本留下了检查项', checkRecords.length > 0])
     verdict = checks.every(([, ok]) => ok) ? 'PASS' : 'FAIL'
 
     console.log(`elapsed: ${Date.now() - startedAt}ms  termination: ${termination.how}`)
     console.log(`sandbox close: code=${String(termination.code)} signal=${String(termination.signal)}`)
     for (const record of records) console.log(`  record ${JSON.stringify(record)}`)
+    for (const record of checkRecords) console.log(`  check ${record['ok'] === true ? 'ok  ' : 'FAIL'} ${String(record['name'])}`)
     for (const [label, ok] of checks) console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${label}`)
     if (verdict === 'FAIL') {
       console.log(`--- stdout tail ---\n${stdout.join('').split('\n').slice(-tailLines).join('\n')}`)
