@@ -1,13 +1,13 @@
 import { spawn, type ChildProcess } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, readFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { basename, join } from 'node:path'
 import { downloadAndUnzipVSCode } from '@vscode/test-electron'
 
 const repoRoot = process.cwd()
 const scenario = process.argv[2] ?? 's1'
 const pollIntervalMs = 100
-const suiteTimeoutMs = 60_000
+const suiteWindowsMs = [5_000, 15_000, 30_000]
 const killTimeoutMs = 5_000
 const tailLines = 20
 
@@ -19,11 +19,18 @@ const requiredRecords: Record<string, string[]> = {
   s4: ['layout'],
   s5: ['preview', 'preview-state'],
   s6: ['preview', 'preview-state', 'reveal', 'expand-request'],
+  s7: ['preview', 'preview-state', 'reveal', 'preview-close'],
 }
 
 interface RecordLine {
   event: string
   [key: string]: unknown
+}
+
+interface SandboxClose {
+  how: 'already-exited' | 'sigterm' | 'sigkill' | 'stuck'
+  code: number | null
+  signal: NodeJS.Signals | null
 }
 
 function delay(ms: number): Promise<void> {
@@ -38,13 +45,13 @@ function readRecords(filePath: string): RecordLine[] {
     .map((line) => JSON.parse(line) as RecordLine)
 }
 
-/** 等某几类记录出现，超时返回 undefined；等待必有限次且绑定终止条件。 */
+/** 在给定窗口里等某几类记录；窗口到期返回空，由调用方决定要不要接着等。 */
 async function waitForRecords(
   filePath: string,
   events: readonly string[],
-  timeoutMs: number,
+  windowMs: number,
 ): Promise<RecordLine[]> {
-  const deadline = Date.now() + timeoutMs
+  const deadline = Date.now() + windowMs
   while (Date.now() < deadline) {
     const seen = readRecords(filePath).filter((record) => events.includes(record.event))
     if (seen.length > 0) return seen
@@ -53,10 +60,18 @@ async function waitForRecords(
   return []
 }
 
-interface SandboxClose {
-  how: 'already-exited' | 'sigterm' | 'sigkill' | 'stuck'
-  code: number | null
-  signal: NodeJS.Signals | null
+/** 超时从小起步逐级放大，每级到期都记一笔，卡住时能看出停在哪。 */
+async function waitForSuite(filePath: string): Promise<{ records: RecordLine[]; expired: number[] }> {
+  const expired: number[] = []
+  const startedAt = Date.now()
+
+  for (const window of suiteWindowsMs) {
+    const records = await waitForRecords(filePath, ['suite-ready', 'suite-error'], window)
+    if (records.length > 0) return { records, expired }
+    expired.push(Date.now() - startedAt)
+  }
+
+  return { records: [], expired }
 }
 
 /** 只按 PID 收自己起的那个实例：先 SIGTERM，超时才 SIGKILL。 */
@@ -81,6 +96,13 @@ async function terminateSandbox(child: ChildProcess): Promise<SandboxClose> {
   return { how: forced === 'closed' ? 'sigkill' : 'stuck', code: close[0], signal: close[1] }
 }
 
+/** 只清自己建在系统临时目录下、带固定前缀的那个目录。 */
+function cleanupSandbox(root: string): 'done' | 'kept' | 'skipped' {
+  if (!root.startsWith(tmpdir()) || !basename(root).startsWith('contractdag-e2e-')) return 'skipped'
+  rmSync(root, { recursive: true, force: true })
+  return existsSync(root) ? 'kept' : 'done'
+}
+
 function sandboxEnv(sinkFile: string): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
@@ -100,9 +122,14 @@ async function main(): Promise<void> {
   const extensionsDir = join(root, 'extensions')
   const workspaceDir = join(root, 'workspace')
   for (const dir of [userDataDir, extensionsDir, workspaceDir]) mkdirSync(dir, { recursive: true })
+
+  // 整条用户路径要在一个真工作区上走：把样例复制进去，当作作者自己写的那份契约。
+  const workspaceFile = join(workspaceDir, 'pipeline.contractdag')
+  copyFileSync(join(repoRoot, 'test/fixtures/deploy.contractdag'), workspaceFile)
   const sinkFile = join(root, 'records.jsonl')
 
   console.log(`sandbox root: ${root}`)
+  console.log(`workspace file: ${workspaceFile}`)
   const codePath = process.env['CONTRACTDAG_CODE_PATH'] ?? (await downloadAndUnzipVSCode())
   if (!existsSync(codePath)) throw new Error(`VS Code 可执行文件不存在：${codePath}`)
 
@@ -127,20 +154,23 @@ async function main(): Promise<void> {
   const startedAt = Date.now()
   let verdict = 'FAIL'
   let termination: SandboxClose = { how: 'stuck', code: null, signal: null }
+  let cleanup = 'kept'
+
   try {
-    const suiteRecords = await waitForRecords(sinkFile, ['suite-ready', 'suite-error'], suiteTimeoutMs)
+    const suite = await waitForSuite(sinkFile)
     termination = await terminateSandbox(child)
 
     const records = readRecords(sinkFile)
     const events = records.map((record) => record.event)
     const present = (event: string): boolean => events.includes(event)
-    const failure = suiteRecords.find((record) => record.event === 'suite-error')
+    const failure = suite.records.find((record) => record.event === 'suite-error')
     const checkRecords = records.filter((record) => record.event === 'check')
     const failedChecks = checkRecords.filter((record) => record['ok'] !== true)
 
     const checks: Array<[string, boolean]> = [
       ['activation 写过 activated', present('activated')],
       ...(requiredRecords[scenario] ?? []).map((event): [string, boolean] => [`命令写过 ${event}`, present(event)]),
+      ['剧本在时限内报出结果', suite.records.length > 0],
       ['沙盒报过 suite-ready', present('suite-ready')],
       ['沙盒没报 suite-error', failure === undefined],
       ['剧本的检查项全过', failedChecks.length === 0],
@@ -151,6 +181,7 @@ async function main(): Promise<void> {
     verdict = checks.every(([, ok]) => ok) ? 'PASS' : 'FAIL'
 
     console.log(`elapsed: ${Date.now() - startedAt}ms  termination: ${termination.how}`)
+    if (suite.expired.length > 0) console.log(`timeout windows expired at: ${suite.expired.join('ms, ')}ms`)
     console.log(`sandbox close: code=${String(termination.code)} signal=${String(termination.signal)}`)
     for (const record of records) console.log(`  record ${JSON.stringify(record)}`)
     for (const record of checkRecords) console.log(`  check ${record['ok'] === true ? 'ok  ' : 'FAIL'} ${String(record['name'])}`)
@@ -161,8 +192,10 @@ async function main(): Promise<void> {
     }
   } finally {
     if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL')
+    if (verdict === 'PASS') cleanup = cleanupSandbox(root)
   }
 
+  console.log(`cleanup: ${cleanup}${cleanup === 'kept' ? `  （现场留在 ${root}）` : ''}`)
   console.log(`script exit: ${verdict === 'PASS' ? 0 : 1}`)
   console.log(`verdict: ${verdict}`)
   if (verdict !== 'PASS') process.exitCode = 1
