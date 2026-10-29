@@ -1,5 +1,6 @@
 import * as vscode from 'vscode'
 import type { InspectResult } from '../../src/editor/inspect.ts'
+import type { LayoutJson } from '../../src/layout.ts'
 import type { DumpJson } from '../../src/model.ts'
 import { createFileSink, createRecorder } from '../../src/records.ts'
 
@@ -35,6 +36,9 @@ export async function run(): Promise<void> {
         break
       case 's3':
         await runS3(check)
+        break
+      case 's4':
+        await runS4(check)
         break
       default:
         throw new Error(`没有这个剧本：${scenario}`)
@@ -84,6 +88,29 @@ async function runS3(check: (name: string, ok: boolean) => void): Promise<void> 
   editor.selection = new vscode.Selection(bodyLine, 0, bodyLine, 0)
   const atBody = await vscode.commands.executeCommand<InspectResult>('contractdag.inspect')
   check('连线体处补全含 artifact', atBody?.completions.includes('artifact') === true)
+}
+
+async function runS4(check: (name: string, ok: boolean) => void): Promise<void> {
+  const fixture = process.env['CONTRACTDAG_E2E_FIXTURE']
+  if (fixture === undefined) throw new Error('缺少 CONTRACTDAG_E2E_FIXTURE')
+
+  const document = await vscode.workspace.openTextDocument(vscode.Uri.file(fixture))
+  await vscode.window.showTextDocument(document)
+
+  const result = await vscode.commands.executeCommand<LayoutJson>('contractdag.layout')
+  const boxes = result?.boxes ?? {}
+  const expected: Record<string, [number, number]> = {
+    源码构建节点: [80, 24],
+    上线安装节点: [80, 100],
+    站点巡检节点: [80, 176],
+    流水线收尾: [80, 252],
+  }
+
+  for (const [name, [x, y]] of Object.entries(expected)) {
+    const box = boxes[name]
+    check(`${name} 落在 ${x},${y}`, box?.x === x && box?.y === y)
+  }
+  check('四格同宽同高 160×56', Object.values(boxes).every((box) => box.width === 160 && box.height === 56))
 }
 
 function hold(): Promise<never> {

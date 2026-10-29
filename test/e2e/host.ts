@@ -16,6 +16,7 @@ const requiredRecords: Record<string, string[]> = {
   s1: ['dump'],
   s2: ['dump'],
   s3: ['inspect'],
+  s4: ['layout'],
 }
 
 interface RecordLine {
