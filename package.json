@@ -1,0 +1,34 @@
+{
+  "name": "contractdag-preview",
+  "displayName": "Contract DAG Preview",
+  "description": "把契约声明文件画成有向无环图",
+  "version": "0.0.1",
+  "publisher": "contractdag",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "vscode": "^1.90.0"
+  },
+  "main": "./dist/extension.cjs",
+  "contributes": {
+    "commands": [
+      {
+        "command": "contractdag.dump",
+        "title": "Contract DAG: 导出契约模型"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/unit/",
+    "e2e": "node scripts/build.mjs && node dist/test/e2e/host.cjs"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/vscode": "^1.140.0",
+    "@vscode/test-electron": "^3.1.0",
+    "esbuild": "^0.28.2",
+    "typescript": "^7.0.2"
+  }
+}
