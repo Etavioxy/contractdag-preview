@@ -1,0 +1,89 @@
+<nodes>
+
+[采集:query]
+path        = /srv/etl/raw
+destination = 只读源库，一次快照一次读取。
+
+[清洗:change]
+path        = /srv/etl/clean
+destination = 空值与重复行按规则丢弃，丢弃原因计数已记录。
+
+[富化:change]
+path        = /srv/etl/enrich
+destination = 补齐维度字段，补不上的留空并标记来源缺失。
+
+[校验:query]
+path        = /srv/etl/clean
+destination = 主键唯一、时间单调、金额非负，三条都过才放行。
+
+[入库:change]
+path        = /srv/etl/warehouse
+destination = 按天分区写入，同一分区重复写入要幂等。
+
+[出库:change]
+path        = /srv/etl/mart
+destination = 按报表口径重建宽表，旧宽表保留到新表校验通过。
+
+[报表:query]
+path        = /srv/etl/mart
+destination = 三张核心报表行数与昨日差异在 5% 以内。
+
+[结束:root]
+destination = 本轮 ETL 结束：宽表、报表、校验报告三者指向同一分区。
+
+</nodes>
+
+<links>
+
+[[采集 -> 清洗]]
+artifact = raw-snapshot
+
+[[采集 -> 富化]]
+artifact = raw-for-enrich
+
+[[清洗 -> 校验]]
+artifact = clean-table
+
+[[富化 -> 校验]]
+artifact = enriched-table
+
+[[校验 -> 入库]]
+artifact = validated-set
+
+[[入库 -> 出库]]
+artifact = warehouse-partition
+
+[[出库 -> 报表]]
+artifact = mart-table
+
+[[报表 -> 结束]]
+artifact = report-pack
+
+[[出库 -> 结束]]
+artifact = mart-for-release
+
+</links>
+
+<style>
+
+direction LR
+gap 44
+font 更纱黑体 SC
+
+classDef 只读 fill:#102a43,stroke:#4a9eff
+classDef 写入 fill:#2b1d12,stroke:#d9a441
+classDef 出口 fill:#12261b,stroke:#5fb37a
+
+class 采集 只读
+class 校验 只读
+class 报表 只读
+class 清洗 写入
+class 富化 写入
+class 入库 写入
+class 出库 写入
+class 结束 出口
+
+linkStyle 校验 -> 入库 stroke:#cc3333
+linkStyle 富化 -> 校验 stroke:#5fb37a
+
+</style>

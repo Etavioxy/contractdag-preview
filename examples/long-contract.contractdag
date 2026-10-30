@@ -1,0 +1,63 @@
+<nodes>
+
+[需求评审:query]
+path        = /srv/spec/review
+destination = 验收条目逐条可测，不可测的当场退回重写。
+
+[方案设计:change]
+path = [
+  /srv/spec/design
+  /srv/spec/adr
+]
+destination = [
+  每个关键取舍写一份 ADR，写清被否掉的选项与原因。
+  涉及数据结构的改动要先给出迁移与回滚两条路径。
+  接口变更给出前后对比样例，样例必须能跑。
+  容量估算按峰值三倍留余量，并写出估算依据。
+  依赖新增要说明为何不自己写，以及许可证是否相容。
+  失败模式的清单覆盖超时、重试、幂等与降级四种。
+  监控指标至少给出延迟、错误率、饱和度三项。
+  上线顺序与开关位置写在同一份文档里，避免两处叙述打架。
+  回滚步骤写到命令级，不写“回滚到上一版本”这类空话。
+  最终方案交评审会，结论与反对意见一并记录。
+]
+
+[编码:change]
+path        = /srv/app/src
+destination = 实现与方案一致；偏离方案处补一条 ADR 说明。
+
+[测试:change]
+path = [
+  /srv/app/test/unit
+  /srv/app/test/integration
+  /srv/app/test/fixture
+]
+destination = 单测覆盖核心分支，集成测试覆盖三条主链路，夹具与线上数据同构。
+
+[上线:change]
+path        = /srv/app/prod
+destination = 灰度 10% 观察 30 分钟，错误率与延迟都不超基线才全量。
+
+[复盘:root]
+destination = 复盘结束：方案、偏离、事故与改进项都归档到同一目录。
+
+</nodes>
+
+<links>
+
+[[需求评审 -> 方案设计]]
+artifact = acceptance-list
+
+[[方案设计 -> 编码]]
+artifact = design-pack
+
+[[编码 -> 测试]]
+artifact = build-candidate
+
+[[测试 -> 上线]]
+artifact = test-evidence
+
+[[上线 -> 复盘]]
+artifact = release-record
+
+</links>

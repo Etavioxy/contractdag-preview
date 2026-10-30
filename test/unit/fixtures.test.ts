@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
@@ -26,6 +26,20 @@ test('示范样例：12 个节点分三层并行，无诊断', () => {
   assert.deepEqual(analysis.diagnostics, [])
   assert.equal(analysis.model?.nodes.length, 12)
   assert.equal(analysis.model?.links.length, 15)
+})
+
+test('示范目录里每一份都零诊断，且产物名在各自文件内唯一', () => {
+  const files = readdirSync(examples).filter((name) => name.endsWith('.contractdag'))
+  assert.ok(files.length >= 5, '示范样例少于五份')
+
+  for (const file of files) {
+    const analysis = parse(readFileSync(join(examples, file), 'utf8'))
+    assert.deepEqual(
+      analysis.diagnostics.map((diagnostic) => `${file}: ${diagnostic.code}`),
+      [],
+      `${file} 有诊断`,
+    )
+  }
 })
 
 test('文法错误的样例报在区名那一行', () => {

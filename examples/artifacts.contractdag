@@ -1,0 +1,60 @@
+<nodes>
+
+[拉取:change]
+path = [
+  /srv/release/src
+  /srv/release/vendor
+  /srv/release/lock
+  /srv/release/patches
+]
+destination = 源码、依赖、锁文件与本地补丁四处一起检出，提交号写进清单。
+
+[构建:change]
+path        = /srv/release/build
+destination = 产物带构建号，同一提交重复构建得到同一份摘要。
+
+[测试:query]
+path        = /srv/release/build
+destination = 冒烟、回归、兼容三套都过，任一不过不进打包。
+
+[打包:change]
+path        = /srv/release/package
+destination = 三个平台的包一起出，缺平台就整批失败。
+
+[签名:change]
+path        = /srv/release/sign
+destination = 包摘要签名，签名与摘要一起入清单。
+
+[分发:change]
+path        = /srv/release/dist
+destination = 分发到三个镜像点，全部校验摘要一致才算完成。
+
+[收尾:root]
+destination = 发布结束：清单里每一行都能在镜像点取到，且摘要与签名对得上。
+
+</nodes>
+
+<links>
+
+[[拉取 -> 构建]]
+artifact = source-snapshot
+
+[[拉取 -> 测试]]
+artifact = source-for-test
+
+[[构建 -> 打包]]
+artifact = build-output
+
+[[测试 -> 打包]]
+artifact = test-report
+
+[[打包 -> 签名]]
+artifact = package-set
+
+[[签名 -> 分发]]
+artifact = signed-manifest
+
+[[分发 -> 收尾]]
+artifact = mirror-index
+
+</links>

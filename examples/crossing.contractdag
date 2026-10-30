@@ -1,0 +1,64 @@
+<nodes>
+
+[入口:change]
+path        = /srv/cross/in
+destination = 输入落到统一位置，三条下游都从这里取。
+
+[甲:change]
+path        = /srv/cross/a
+destination = 甲支处理完毕，产物交给丁、戊两处。
+
+[乙:change]
+path        = /srv/cross/b
+destination = 乙支处理完毕，产物同样交给丁、戊。
+
+[丙:query]
+path        = /srv/cross/c
+destination = 丙支只读，不改动任何文件。
+
+[丁:change]
+path        = /srv/cross/d
+destination = 丁收了甲、乙、丙三路，做交集。
+
+[戊:change]
+path        = /srv/cross/e
+destination = 戊只取甲、乙两路，做并集。
+
+[收尾:root]
+destination = 合流结束：交集与并集都落到同一份清单。
+
+</nodes>
+
+<links>
+
+[[入口 -> 甲]]
+artifact = in-a
+
+[[入口 -> 乙]]
+artifact = in-b
+
+[[入口 -> 丙]]
+artifact = in-c
+
+[[甲 -> 丁]]
+artifact = a-to-d
+
+[[甲 -> 戊]]
+artifact = a-to-e
+
+[[乙 -> 丁]]
+artifact = b-to-d
+
+[[乙 -> 戊]]
+artifact = b-to-e
+
+[[丙 -> 丁]]
+artifact = c-to-d
+
+[[丁 -> 收尾]]
+artifact = intersection
+
+[[戊 -> 收尾]]
+artifact = union
+
+</links>
