@@ -6,6 +6,7 @@ import {
   approach,
   clampScroll,
   densityOf,
+  finiteOffset,
   fitScale,
   isSettled,
   scaleEpsilon,
@@ -173,6 +174,11 @@ function arrowHead(edge: PreviewPayload['edges'][number]): SVGPolygonElement {
 /** 比例决定元素的像素尺寸，平移用 transform：viewBox 恒为内容坐标系，坐标不受缩放与平移影响。 */
 function applyView(): void {
   if (current === null) return
+  if (!finiteOffset(scroll) || !Number.isFinite(scale)) {
+    // 不静默写出 NaN：transform 里出现 NaN 时浏览器整条声明作废，画面会完全不动。
+    vscode.postMessage({ type: 'probe', payload: { kind: 'non-finite', scrollX: String(scroll.x), scrollY: String(scroll.y) } })
+    scroll = { x: 0, y: 0 }
+  }
   const size = scaledSize(contentSize(), scale)
   graph.style.width = `${size.width}px`
   graph.style.height = `${size.height}px`

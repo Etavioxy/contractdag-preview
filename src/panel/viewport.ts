@@ -42,14 +42,10 @@ export function scaledSize(content: Size, scale: number): Size {
 }
 
 /** 缩放时锚点下的内容保持不动：先把锚点换算成内容坐标，再按新比例摆回去。 */
-export function anchorScroll(
-  transform: ViewTransform,
-  nextScale: number,
-  anchor: Point,
-): { scrollX: number; scrollY: number } {
+export function anchorScroll(transform: ViewTransform, nextScale: number, anchor: Point): Offset {
   const contentX = (transform.scrollX + anchor.x) / transform.scale
   const contentY = (transform.scrollY + anchor.y) / transform.scale
-  return { scrollX: contentX * nextScale - anchor.x, scrollY: contentY * nextScale - anchor.y }
+  return { x: contentX * nextScale - anchor.x, y: contentY * nextScale - anchor.y }
 }
 
 /**
@@ -58,20 +54,27 @@ export function anchorScroll(
  */
 export const panSlack = 0.5
 
+/** 位移量。统一用 `{x, y}`，避免与 `ViewTransform` 的 `scrollX/scrollY` 混用。 */
+export interface Offset {
+  x: number
+  y: number
+}
+
 /** 滚动钳进「内容 + 两侧余量」的范围；余量允许负值，所以平移用 transform 而不是 scrollLeft。 */
-export function clampScroll(
-  scroll: { scrollX: number; scrollY: number },
-  viewport: Size,
-  content: Size,
-): { scrollX: number; scrollY: number } {
+export function clampScroll(scroll: Offset, viewport: Size, content: Size): Offset {
   const slackX = viewport.width * panSlack
   const slackY = viewport.height * panSlack
   const maxX = Math.max(0, content.width - viewport.width) + slackX
   const maxY = Math.max(0, content.height - viewport.height) + slackY
   return {
-    scrollX: Math.min(maxX, Math.max(-slackX, scroll.scrollX)),
-    scrollY: Math.min(maxY, Math.max(-slackY, scroll.scrollY)),
+    x: Math.min(maxX, Math.max(-slackX, scroll.x)),
+    y: Math.min(maxY, Math.max(-slackY, scroll.y)),
   }
+}
+
+/** 位移或比例一旦不是有限数就回到原点：宁可复位，也不要写出 NaN 让 transform 整条失效。 */
+export function finiteOffset(scroll: Offset): boolean {
+  return Number.isFinite(scroll.x) && Number.isFinite(scroll.y)
 }
 
 /**

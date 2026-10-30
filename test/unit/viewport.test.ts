@@ -6,6 +6,7 @@ import {
   clampScale,
   clampScroll,
   densityOf,
+  finiteOffset,
   fitScale,
   isSettled,
   scaledSize,
@@ -37,8 +38,8 @@ test('锚点缩放：光标下的那处内容不动', () => {
   const next = anchorScroll(before, 2, anchor)
 
   const contentX = (before.scrollX + anchor.x) / before.scale
-  assert.equal((next.scrollX + anchor.x) / 2, contentX)
-  assert.equal((next.scrollY + anchor.y) / 2, (before.scrollY + anchor.y) / before.scale)
+  assert.equal((next.x + anchor.x) / 2, contentX)
+  assert.equal((next.y + anchor.y) / 2, (before.scrollY + anchor.y) / before.scale)
 })
 
 test('滚动范围留半个视口余量，负数也允许', () => {
@@ -47,11 +48,17 @@ test('滚动范围留半个视口余量，负数也允许', () => {
   const small = { width: 200, height: 100 }
 
   // 上界 = 内容超出视口的部分 + 余量（200 / 150）；下界 = −余量
-  assert.deepEqual(clampScroll({ scrollX: 800, scrollY: 900 }, viewport, big), { scrollX: 700, scrollY: 550 })
-  assert.deepEqual(clampScroll({ scrollX: -300, scrollY: -200 }, viewport, big), { scrollX: -200, scrollY: -150 })
+  assert.deepEqual(clampScroll({ x: 800, y: 900 }, viewport, big), { x: 700, y: 550 })
+  assert.deepEqual(clampScroll({ x: -300, y: -200 }, viewport, big), { x: -200, y: -150 })
 
   // 内容比视口小也必须能动，否则贴合视口时双指滑行无处可去
-  assert.deepEqual(clampScroll({ scrollX: 120, scrollY: 80 }, viewport, small), { scrollX: 120, scrollY: 80 })
+  assert.deepEqual(clampScroll({ x: 120, y: 80 }, viewport, small), { x: 120, y: 80 })
+})
+
+test('位移不是有限数时能判出来，供渲染侧复位', () => {
+  assert.equal(finiteOffset({ x: 0, y: -20 }), true)
+  assert.equal(finiteOffset({ x: Number.NaN, y: 0 }), false)
+  assert.equal(finiteOffset({ x: 0, y: Number.POSITIVE_INFINITY }), false)
 })
 
 test('适配宽度：宽度贴合且不放大，高度超出留给纵向滚动', () => {

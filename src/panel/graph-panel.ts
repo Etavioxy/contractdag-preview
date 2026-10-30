@@ -127,6 +127,9 @@ function handleMessage(document: vscode.TextDocument, message: unknown): void {
     case 'state':
       recorder?.record('preview-state', toStateRecord(payload))
       return
+    case 'probe':
+      recorder?.record('preview-probe', toProbeRecord(payload))
+      return
     case 'reveal': {
       const name = (payload as { name?: unknown } | undefined)?.name
       if (typeof name === 'string') void revealNode(document, name)
@@ -213,6 +216,16 @@ function toStateRecord(payload: unknown): Record<string, unknown> {
     viewportHeight: typeof source['viewportHeight'] === 'number' ? source['viewportHeight'] : -1,
     contentWidth: typeof source['contentWidth'] === 'number' ? source['contentWidth'] : -1,
     contentHeight: typeof source['contentHeight'] === 'number' ? source['contentHeight'] : -1,
+  }
+}
+
+/** 渲染侧报来的自检结果，只收约定字段。 */
+function toProbeRecord(payload: unknown): Record<string, unknown> {
+  const source = (typeof payload === 'object' && payload !== null ? payload : {}) as Record<string, unknown>
+  return {
+    kind: typeof source['kind'] === 'string' ? source['kind'] : '',
+    scrollX: typeof source['scrollX'] === 'string' ? source['scrollX'] : '',
+    scrollY: typeof source['scrollY'] === 'string' ? source['scrollY'] : '',
   }
 }
 
