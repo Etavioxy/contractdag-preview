@@ -1,0 +1,131 @@
+<nodes>
+
+[需求冻结:change]
+path = /srv/pipeline/spec
+destination = [
+  需求单状态置为 frozen，验收条目逐条可测。
+  冻结后再改需求必须重新走一遍评审。
+]
+
+[源码拉取:change]
+path        = /srv/pipeline/src
+destination = 代码与锁文件一起检出，提交号已记录。
+
+[静态检查:query]
+path        = /srv/pipeline/src
+destination = 零 error，warning 不超过 20 条。
+
+[单元测试:query]
+path        = /srv/pipeline/src
+destination = 行覆盖不低于 80%，失败的用例要给出复现命令。
+
+[依赖审计:query]
+path        = /srv/pipeline/src
+destination = 没有 high 及以上漏洞；有则列出受影响路径。
+
+[镜像构建:change]
+path        = /srv/pipeline/image
+destination = [
+  镜像摘要写进清单，同一提交号重复构建得到同一摘要。
+  基础镜像只用内部登记过的那些。
+]
+
+[灰度发布:change]
+path        = /srv/pipeline/canary
+destination = 灰度流量 5%，连续 10 分钟错误率低于 0.1%。
+
+[安全扫描:query]
+path        = /srv/pipeline/image
+destination = 镜像内不含高危 CVE，密钥不落在镜像层里。
+
+[全量发布:change]
+path        = /srv/pipeline/prod
+destination = [
+  全部实例换到新版本，健康检查全绿。
+  回滚窗口保持 30 分钟，期间不再发新版本。
+]
+
+[线上巡检:query]
+path        = /srv/pipeline/prod
+destination = 核心接口 200 占比不低于 99.9%，延迟 P99 在 300ms 内。
+
+[日志归档:change]
+path        = /srv/pipeline/logs
+destination = 本轮构建与发布日志打包归档，保留 180 天。
+
+[流水线收尾:root]
+destination = 流水线结束：镜像摘要、巡检报告、归档路径三样都指向同一个提交号。
+
+</nodes>
+
+<links>
+
+[[需求冻结 -> 源码拉取]]
+artifact = spec-lock
+
+[[源码拉取 -> 静态检查]]
+artifact = snapshot-for-lint
+
+[[源码拉取 -> 单元测试]]
+artifact = snapshot-for-unit
+
+[[源码拉取 -> 依赖审计]]
+artifact = snapshot-for-audit
+
+[[静态检查 -> 镜像构建]]
+artifact = lint-report
+
+[[单元测试 -> 镜像构建]]
+artifact = test-report
+
+[[依赖审计 -> 镜像构建]]
+artifact = audit-report
+
+[[镜像构建 -> 灰度发布]]
+artifact = image-digest
+
+[[镜像构建 -> 安全扫描]]
+artifact = image-for-scan
+
+[[灰度发布 -> 全量发布]]
+artifact = canary-pass
+
+[[安全扫描 -> 全量发布]]
+artifact = scan-clear
+
+[[全量发布 -> 线上巡检]]
+artifact = release-manifest
+
+[[全量发布 -> 日志归档]]
+artifact = release-for-logs
+
+[[线上巡检 -> 流水线收尾]]
+artifact = inspect-report
+
+[[日志归档 -> 流水线收尾]]
+artifact = logs-archived
+
+</links>
+
+<style>
+
+direction TB
+gap 32
+font 更纱黑体 SC
+
+classDef 观测 fill:#1f2d3d,stroke:#4a9eff
+classDef 源头 fill:#2d2418,stroke:#d9a441
+classDef 出口 fill:#1d2f24,stroke:#5fb37a
+
+class 静态检查 观测
+class 单元测试 观测
+class 依赖审计 观测
+class 安全扫描 观测
+class 线上巡检 观测
+class 需求冻结 源头
+class 流水线收尾 出口
+
+linkStyle 灰度发布 -> 全量发布 stroke:#d9a441
+linkStyle 安全扫描 -> 全量发布 stroke:#cc3333
+
+</style>

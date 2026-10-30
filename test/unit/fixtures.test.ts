@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url'
 import { parse } from '../../src/parser.ts'
 
 const fixtures = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures')
+const examples = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'examples')
 
 function codesOf(file: string): string[] {
   return parse(readFileSync(join(fixtures, file), 'utf8')).diagnostics.map((diagnostic) => diagnostic.code)
@@ -17,6 +18,14 @@ test('分叉样例：一个上游分给两支，两支都汇到根', () => {
 
 test('汇合样例：两路并进一个节点，再落到根', () => {
   assert.deepEqual(codesOf('merge.contractdag'), [])
+})
+
+test('示范样例：12 个节点分三层并行，无诊断', () => {
+  const analysis = parse(readFileSync(join(examples, 'pipeline.contractdag'), 'utf8'))
+
+  assert.deepEqual(analysis.diagnostics, [])
+  assert.equal(analysis.model?.nodes.length, 12)
+  assert.equal(analysis.model?.links.length, 15)
 })
 
 test('文法错误的样例报在区名那一行', () => {
