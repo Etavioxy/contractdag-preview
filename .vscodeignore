@@ -1,0 +1,15 @@
+# 只装运行期需要的东西：打包产物、文法、语言配置、package.json
+src/**
+test/**
+plans/**
+docs/**
+scripts/**
+media/preview.ts
+concepts.md
+spec.md
+ideas.md
+tsconfig.json
+pnpm-lock.yaml
+.gitignore
+**/*.map
+dist/test/**
