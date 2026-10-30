@@ -21,7 +21,6 @@ export const scaleStep = 1.1
 
 /** 每帧吃掉剩余距离的比例。0.18 时约十二帧走完九成，够迟滞又不拖泥带水。 */
 export const dampingFactor = 0.18
-export const scrollEpsilon = 0.5
 export const scaleEpsilon = 0.0005
 
 export function clampScale(scale: number): number {
@@ -67,10 +66,13 @@ export function clampScroll(
   }
 }
 
-/** 适配全图：取两个方向的较小比例，且不超过 1——小图不放大，免得把框撑成巨物。 */
+/**
+ * 适配宽度：宽度贴合视口且不超过 1，高度超出就让纵向滚动负担。
+ * 取两个方向的较小比例会让内容永远装进视口，可滚距离恒为 0，双指滑行等于失效。
+ */
 export function fitScale(viewport: Size, content: Size): number {
-  if (content.width === 0 || content.height === 0) return 1
-  return clampScale(Math.min(1, viewport.width / content.width, viewport.height / content.height))
+  if (content.width === 0) return 1
+  return clampScale(Math.min(1, viewport.width / content.width))
 }
 
 /** 滚轮一格的目标比例：按固定倍率乘，落在上下限里。 */

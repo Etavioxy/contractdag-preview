@@ -51,10 +51,13 @@ test('滚动钳进可滚范围，内容小于视口时归零', () => {
   assert.deepEqual(clampScroll({ scrollX: 30, scrollY: 30 }, viewport, small), { scrollX: 0, scrollY: 0 })
 })
 
-test('适配全图：取较小比例且不放大', () => {
+test('适配宽度：宽度贴合且不放大，高度超出留给纵向滚动', () => {
   assert.equal(fitScale({ width: 900, height: 800 }, { width: 720, height: 776 }), 1)
   assert.equal(fitScale({ width: 900, height: 800 }, { width: 320, height: 388 }), 1)
-  assert.equal(fitScale({ width: 600, height: 400 }, { width: 1200, height: 2000 }), 0.5)
+  assert.equal(fitScale({ width: 600, height: 800 }, { width: 1200, height: 2000 }), 0.5)
+
+  const tall = fitScale({ width: 600, height: 800 }, { width: 720, height: 2600 })
+  assert.ok(tall * 2600 > 800, '高图必须留下可滚距离，否则双指滑行无处可去')
   assert.equal(fitScale({ width: 600, height: 400 }, { width: 0, height: 0 }), 1)
 })
 

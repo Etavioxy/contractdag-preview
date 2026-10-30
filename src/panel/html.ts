@@ -42,7 +42,7 @@ export function buildPreviewHtml(options: PreviewHtmlOptions): string {
 <div id="viewport"><svg id="graph" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" data-density="edge-label"></svg></div>
 <div id="controls">
   <button id="zoom-out" title="缩小">−</button>
-  <button id="zoom-fit" title="适配全图">适配</button>
+  <button id="zoom-fit" title="适配宽度">适配宽度</button>
   <button id="zoom-in" title="放大">+</button>
 </div>
 <p id="stale" hidden></p>
