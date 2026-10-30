@@ -206,6 +206,13 @@ function toStateRecord(payload: unknown): Record<string, unknown> {
     scale: typeof source['scale'] === 'number' ? source['scale'] : -1,
     scrollX: typeof source['scrollX'] === 'number' ? source['scrollX'] : -1,
     scrollY: typeof source['scrollY'] === 'number' ? source['scrollY'] : -1,
+    wheelEvents: typeof source['wheelEvents'] === 'number' ? source['wheelEvents'] : -1,
+    lastDeltaX: typeof source['lastDeltaX'] === 'number' ? source['lastDeltaX'] : -1,
+    lastDeltaY: typeof source['lastDeltaY'] === 'number' ? source['lastDeltaY'] : -1,
+    viewportWidth: typeof source['viewportWidth'] === 'number' ? source['viewportWidth'] : -1,
+    viewportHeight: typeof source['viewportHeight'] === 'number' ? source['viewportHeight'] : -1,
+    contentWidth: typeof source['contentWidth'] === 'number' ? source['contentWidth'] : -1,
+    contentHeight: typeof source['contentHeight'] === 'number' ? source['contentHeight'] : -1,
   }
 }
 

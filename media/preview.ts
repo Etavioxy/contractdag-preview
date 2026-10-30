@@ -36,6 +36,9 @@ let scale = 1
 let scroll = { x: 0, y: 0 }
 let zoom: ZoomRun | null = null
 let frame = 0
+let reportTimer = 0
+/** 滚轮到底进没进来、进来的是哪个轴：位移不动时靠这三个数字分辨是没事件还是被钳住。 */
+const wheelStats = { count: 0, deltaX: 0, deltaY: 0 }
 let drag: { pointerId: number; pointerX: number; pointerY: number; scrollX: number; scrollY: number; moved: number } | null =
   null
 
@@ -243,8 +246,24 @@ function postState(): void {
       scale: Math.round(scale * 100),
       scrollX: Math.round(scroll.x),
       scrollY: Math.round(scroll.y),
+      wheelEvents: wheelStats.count,
+      lastDeltaX: Math.round(wheelStats.deltaX),
+      lastDeltaY: Math.round(wheelStats.deltaY),
+      viewportWidth: Math.round(viewportSize().width),
+      viewportHeight: Math.round(viewportSize().height),
+      contentWidth: Math.round(current?.width ?? 0),
+      contentHeight: Math.round(current?.height ?? 0),
     },
   })
+}
+
+/** 手势停下后回报一次，免得每帧都发消息。 */
+function scheduleReport(): void {
+  if (reportTimer !== 0) window.clearTimeout(reportTimer)
+  reportTimer = window.setTimeout(() => {
+    reportTimer = 0
+    postState()
+  }, 150)
 }
 
 function showStale(messages: string[]): void {
@@ -267,6 +286,9 @@ viewport.addEventListener(
 
     // 触控板自带惯性与阻尼，这里再逼近一层会变成双份惯性：滑不停、也停不准。
     const step = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY
+    wheelStats.count += 1
+    wheelStats.deltaX = event.deltaX
+    wheelStats.deltaY = event.deltaY
     zoom = null
     scroll = clampScroll(
       { x: scroll.x + (event.shiftKey ? step : event.deltaX), y: scroll.y + (event.shiftKey ? 0 : step) },
@@ -274,6 +296,7 @@ viewport.addEventListener(
       scaledSize(contentSize(), scale),
     )
     applyView()
+    scheduleReport()
   },
   { passive: false },
 )
@@ -307,6 +330,7 @@ viewport.addEventListener('pointermove', (event: PointerEvent) => {
 function endDrag(event: PointerEvent): void {
   if (drag === null || event.pointerId !== drag.pointerId) return
   if (viewport.hasPointerCapture(event.pointerId)) viewport.releasePointerCapture(event.pointerId)
+  if (drag.moved > dragThreshold) scheduleReport()
   window.setTimeout(() => {
     drag = null
   }, 0)
