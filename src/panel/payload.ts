@@ -25,6 +25,18 @@ export interface PreviewNode {
   stroke?: string
 }
 
+/** 箭头三个顶点，由宿主按连线方向算好，渲染侧不再自己猜朝向。 */
+export interface PreviewArrow {
+  tipX: number
+  tipY: number
+  baseX: number
+  baseY: number
+  leftX: number
+  leftY: number
+  rightX: number
+  rightY: number
+}
+
 export interface PreviewEdge {
   from: string
   to: string
@@ -35,6 +47,7 @@ export interface PreviewEdge {
   y2: number
   labelX: number
   labelY: number
+  arrow: PreviewArrow
   stroke?: string
 }
 
@@ -54,8 +67,9 @@ export interface PreviewPayload {
 }
 
 const canvasMargin = 80
-/** 箭头本身占位，线尾提前收，免得压住目标框的描边。 */
+/** 箭头占的长度：线尾沿线回退这一段，三角形自己补上。 */
 const arrowroom = 7
+const arrowHalfWidth = 4
 const header = layoutDefaults.nodeHeight
 const lineStep = 13
 const dividerGap = 6
@@ -129,17 +143,19 @@ export function buildPreviewPayload(
       ? { x: to.x + to.width / 2, y: to.y }
       : { x: to.x, y: to.y + to.height / 2 }
     const linkStyle = style.linkStyles.find((entry) => entry.from === link.from && entry.to === link.to)
+    const arrow = arrowGeometry(start, end)
     edges.push({
       from: link.from,
       to: link.to,
       artifact: link.properties['artifact'] ?? '',
       x1: start.x,
       y1: start.y,
-      // 箭头本身占位，线尾提前收，免得压住目标框的描边。
-      x2: vertical ? end.x : end.x - arrowroom,
-      y2: vertical ? end.y - arrowroom : end.y,
+      // 线尾沿线方向收，箭头三角形自己补上那段，两者朝向才一致。
+      x2: arrow.baseX,
+      y2: arrow.baseY,
       labelX: (start.x + end.x) / 2,
       labelY: (start.y + end.y) / 2,
+      arrow,
       stroke: linkStyle?.properties['stroke'],
     })
   }
@@ -157,6 +173,34 @@ export function buildPreviewPayload(
     lineStep,
     dividerGap,
     headerHeight: header,
+  }
+}
+
+/** 契约正文：path 每项带标签，destination 保持原句，按框宽折行。 */
+/**
+ * 箭头几何：尖端落在目标框边，底边沿连线方向回退，两翼按法线张开。
+ * 相邻两层的框常不在同一列，连线是斜的；按轴对齐画三角形就会和线错开。
+ */
+function arrowGeometry(start: { x: number; y: number }, end: { x: number; y: number }): PreviewArrow {
+  const dx = end.x - start.x
+  const dy = end.y - start.y
+  const length = Math.hypot(dx, dy) || 1
+  const ux = dx / length
+  const uy = dy / length
+  const baseX = end.x - ux * arrowroom
+  const baseY = end.y - uy * arrowroom
+  const px = -uy * arrowHalfWidth
+  const py = ux * arrowHalfWidth
+
+  return {
+    tipX: end.x,
+    tipY: end.y,
+    baseX,
+    baseY,
+    leftX: baseX + px,
+    leftY: baseY + py,
+    rightX: baseX - px,
+    rightY: baseY - py,
   }
 }
 

@@ -96,6 +96,50 @@ test('面板数据：边从展开节点的实际下沿出发', () => {
   assert.equal(edge.y1, node.y + node.height)
 })
 
+test('面板数据：斜边的箭头尖端贴框边，朝向与连线一致', () => {
+  const fork = parse(readFileSync(join(fixtures, 'fork.contractdag'), 'utf8'))
+  const payload = buildPreviewPayload(fork)
+  assert.ok(payload)
+
+  const edge = payload.edges.find((entry) => entry.from === '甲' && entry.to === '乙')
+  const target = payload.nodes.find((node) => node.name === '乙')
+  assert.ok(edge)
+  assert.ok(target)
+
+  // 尖端贴在目标框的上沿中点
+  assert.equal(edge.arrow.tipX, target.x + target.width / 2)
+  assert.equal(edge.arrow.tipY, target.y)
+  // 线尾就是箭头底边中心，两者相距正好是箭头占位
+  assert.equal(edge.x2, edge.arrow.baseX)
+  assert.equal(edge.y2, edge.arrow.baseY)
+  assert.ok(Math.abs(Math.hypot(edge.arrow.tipX - edge.arrow.baseX, edge.arrow.tipY - edge.arrow.baseY) - 7) < 1e-6)
+
+  // 连线是斜的：两框不在同一列，这正是轴对齐画法会错位的场景
+  assert.ok(Math.abs(edge.arrow.tipX - edge.x1) > 1)
+  // 两翼关于连线对称，各自离线的距离都是半宽
+  const distToLine = (x: number, y: number): number => {
+    const dx = edge.arrow.tipX - edge.x1
+    const dy = edge.arrow.tipY - edge.y1
+    return Math.abs((x - edge.x1) * dy - (y - edge.y1) * dx) / Math.hypot(dx, dy)
+  }
+  assert.ok(Math.abs(distToLine(edge.arrow.leftX, edge.arrow.leftY) - 4) < 1e-6)
+  assert.ok(Math.abs(distToLine(edge.arrow.rightX, edge.arrow.rightY) - 4) < 1e-6)
+})
+
+test('面板数据：竖直边的箭头仍沿轴，几何与轴对齐时一致', () => {
+  const payload = buildPreviewPayload(deploy)
+  assert.ok(payload)
+
+  const edge = payload.edges[0]
+  assert.ok(edge)
+  assert.equal(edge.arrow.tipX, 160)
+  assert.equal(edge.arrow.tipY, 100)
+  assert.equal(edge.arrow.baseX, 160)
+  assert.equal(edge.arrow.baseY, 93)
+  assert.ok(Math.abs(edge.arrow.leftX - 156) < 1e-6)
+  assert.ok(Math.abs(edge.arrow.rightX - 164) < 1e-6)
+})
+
 test('有结构缺陷时不产出新图', () => {
   const broken = parse(
     [

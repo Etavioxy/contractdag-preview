@@ -20,7 +20,6 @@ declare function acquireVsCodeApi(): { postMessage(message: unknown): void }
 
 const vscode = acquireVsCodeApi()
 const namespace = 'http://www.w3.org/2000/svg'
-const arrowLength = 7
 
 interface ZoomRun {
   fromScale: number
@@ -81,7 +80,9 @@ function render(payload: PreviewPayload): void {
   for (const edge of payload.edges) {
     const group = element('g', { class: 'edge' })
     const line = element('line', { x1: edge.x1, y1: edge.y1, x2: edge.x2, y2: edge.y2 })
-    const arrow = arrowHead(edge)
+    const arrow = element('polygon', {
+      points: `${edge.arrow.tipX},${edge.arrow.tipY} ${edge.arrow.leftX},${edge.arrow.leftY} ${edge.arrow.rightX},${edge.arrow.rightY}`,
+    })
     if (edge.stroke !== undefined) {
       line.setAttribute('stroke', edge.stroke)
       arrow.setAttribute('fill', edge.stroke)
@@ -160,19 +161,6 @@ function render(payload: PreviewPayload): void {
 
   applyView()
   postState()
-}
-
-/** 边轴对齐，箭头用三角形自己画：不依赖 marker 的 context-stroke。 */
-function arrowHead(edge: PreviewPayload['edges'][number]): SVGPolygonElement {
-  const vertical = Math.abs(edge.x2 - edge.x1) < 0.5
-  const signX = Math.sign(edge.x2 - edge.x1)
-  const signY = Math.sign(edge.y2 - edge.y1)
-  const tipX = edge.x2 + signX * arrowLength
-  const tipY = edge.y2 + signY * arrowLength
-
-  return vertical
-    ? element('polygon', { points: `${tipX},${tipY} ${tipX - 4},${edge.y2} ${tipX + 4},${edge.y2}` })
-    : element('polygon', { points: `${tipX},${tipY} ${edge.x2},${tipY - 4} ${edge.x2},${tipY + 4}` })
 }
 
 /** 比例决定元素的像素尺寸，平移用 transform：viewBox 恒为内容坐标系，坐标不受缩放与平移影响。 */
