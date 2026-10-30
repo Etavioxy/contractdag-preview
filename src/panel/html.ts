@@ -22,10 +22,11 @@ export function buildPreviewHtml(options: PreviewHtmlOptions): string {
   .node text { fill: var(--vscode-editor-foreground); font-size: 13px; dominant-baseline: middle; }
   .node .kind { fill: var(--vscode-descriptionForeground, #999); font-size: 11px; }
   .edge line { stroke: var(--vscode-editorLineNumber-foreground, #666); stroke-width: 1.5; }
-  .edge text { fill: var(--vscode-descriptionForeground, #999); font-size: 11px; text-anchor: middle; }
+  .edge polygon { fill: var(--vscode-editorLineNumber-foreground, #666); stroke: none; }
+  .edge text { fill: var(--vscode-descriptionForeground, #999); font-size: 11px; text-anchor: middle; paint-order: stroke; stroke: var(--vscode-editor-background, #1e1e1e); stroke-width: 4px; stroke-linejoin: round; }
   .chevron { fill: var(--vscode-descriptionForeground, #999); font-size: 11px; cursor: pointer; }
-  .contract rect { fill: var(--vscode-textCodeBlock-background, #1b1b1b); stroke: var(--vscode-editorWidget-border, #555); stroke-width: 1; }
-  .contract text { fill: var(--vscode-editor-foreground); font-size: 10px; }
+  .node .divider { stroke: var(--vscode-editorWidget-border, #555); stroke-width: 1; }
+  .contract text { fill: var(--vscode-editor-foreground); font-size: 10px; paint-order: stroke; stroke: var(--vscode-textCodeBlock-background, #1b1b1b); stroke-width: 3px; stroke-linejoin: round; }
   #stale { margin: 8px; color: var(--vscode-errorForeground, #f66); font-size: 12px; }
 </style>
 </head>

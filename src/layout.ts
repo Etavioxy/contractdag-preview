@@ -11,6 +11,8 @@ export interface LayoutOptions {
   gapCross?: number
   marginX?: number
   marginY?: number
+  /** 按节点覆盖高度：展开的契约分区比折叠态高，层距要按最高那个算。 */
+  heights?: Record<string, number>
 }
 
 export interface NodeBox {
@@ -27,7 +29,7 @@ export interface LayoutJson {
   boxes: Record<string, NodeBox>
 }
 
-export const layoutDefaults: Required<LayoutOptions> = {
+export const layoutDefaults: Required<Omit<LayoutOptions, 'heights'>> = {
   direction: 'TB',
   gap: 20,
   nodeWidth: 160,
@@ -39,6 +41,9 @@ export const layoutDefaults: Required<LayoutOptions> = {
 
 export function layout(model: ContractModel, options: LayoutOptions = {}): LayoutResult {
   const settings = { ...layoutDefaults, ...options }
+  const heights = options.heights ?? {}
+  const heightOf = (name: string): number => heights[name] ?? settings.nodeHeight
+
   const names = [...new Set(model.nodes.map((node) => node.name))]
   const boxes: LayoutResult = new Map()
   if (names.length === 0) return boxes
@@ -58,29 +63,41 @@ export function layout(model: ContractModel, options: LayoutOptions = {}): Layou
 
   const vertical = settings.direction === 'TB' || settings.direction === 'BT'
   const reversed = settings.direction === 'BT' || settings.direction === 'RL'
-  const crossSize = vertical ? settings.nodeWidth : settings.nodeHeight
-  const crossStep = crossSize + settings.gapCross
-  const layerStep = (vertical ? settings.nodeHeight : settings.nodeWidth) + settings.gap
-  const widest = Math.max(...layers.map((layer) => layer.length))
-  const crossSpan = widest * crossSize + (widest - 1) * settings.gapCross
+
+  // 每个节点在流动方向上的长度（TB 是高度，LR 是宽度）与在交叉方向上的长度各自算，
+  // 再取每层最大值：展开的节点只把本层撑大，不压邻居。
+  const flowOf = (name: string): number => (vertical ? heightOf(name) : settings.nodeWidth)
+  const crossOf = (name: string): number => (vertical ? settings.nodeWidth : heightOf(name))
+  const flowExtent = layers.map((layer) => Math.max(...layer.map(flowOf)))
+  const crossExtent = layers.map((layer) => Math.max(...layer.map(crossOf)))
+
+  const visualLayers = reversed ? [...layers].reverse() : layers
+  const visualFlow = reversed ? [...flowExtent].reverse() : flowExtent
+  const visualCross = reversed ? [...crossExtent].reverse() : crossExtent
+
+  const widest = Math.max(
+    ...visualLayers.map((layer, index) => layer.length * visualCross[index]! + (layer.length - 1) * settings.gapCross),
+  )
   const crossStart = vertical ? settings.marginX : settings.marginY
   const flowStart = vertical ? settings.marginY : settings.marginX
 
-  for (const [layerIndex, layer] of layers.entries()) {
-    const layerSpan = layer.length * crossSize + (layer.length - 1) * settings.gapCross
-    const layerStart = crossStart + (crossSpan - layerSpan) / 2
-    const flowIndex = reversed ? layers.length - 1 - layerIndex : layerIndex
-    const flow = flowStart + flowIndex * layerStep
+  let flow = flowStart
+  for (const [layerIndex, layer] of visualLayers.entries()) {
+    const extent = visualCross[layerIndex]!
+    const layerSpan = layer.length * extent + (layer.length - 1) * settings.gapCross
+    const layerStart = crossStart + (widest - layerSpan) / 2
+    const crossStep = extent + settings.gapCross
 
     for (const [order, name] of layer.entries()) {
       const cross = layerStart + order * crossStep
+      const box = { width: settings.nodeWidth, height: heightOf(name) }
       boxes.set(
         name,
-        vertical
-          ? { x: cross, y: flow, width: settings.nodeWidth, height: settings.nodeHeight }
-          : { x: flow, y: cross, width: settings.nodeWidth, height: settings.nodeHeight },
+        vertical ? { x: cross, y: flow, ...box } : { x: flow, y: cross, ...box },
       )
     }
+
+    flow += visualFlow[layerIndex]! + settings.gap
   }
 
   return boxes

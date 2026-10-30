@@ -26,9 +26,9 @@ test('面板数据：四个框落在样板的坐标上，三条边的两端贴�
   assert.deepEqual(
     payload.edges.map((edge) => [edge.artifact, edge.x1, edge.y1, edge.x2, edge.y2, edge.labelX, edge.labelY]),
     [
-      ['build.tar', 160, 80, 160, 100, 160, 90],
-      ['env-ready', 160, 156, 160, 176, 160, 166],
-      ['verify-report', 160, 232, 160, 252, 160, 242],
+      ['build.tar', 160, 80, 160, 93, 160, 90],
+      ['env-ready', 160, 156, 160, 169, 160, 166],
+      ['verify-report', 160, 232, 160, 245, 160, 242],
     ],
   )
   assert.equal(payload.width, 320)
@@ -47,6 +47,53 @@ test('面板数据：契约正文随节点带过去', () => {
 
 test('面板数据：高亮的名字随参数带过去', () => {
   assert.equal(buildPreviewPayload(deploy, '站点巡检节点')?.highlight, '站点巡检节点')
+})
+
+test('面板数据：展开的节点撑高自己与后续层，正文全部落在框内', () => {
+  const payload = buildPreviewPayload(deploy, null, new Set(['上线安装节点']))
+  assert.ok(payload)
+
+  const [first, second, third, fourth] = payload.nodes
+  assert.equal(first?.y, 24)
+  assert.equal(second?.expanded, true)
+  assert.ok(second!.height > 56)
+
+  // 层距仍按样式区的 gap，只是从上一次的下边界开始算。
+  assert.equal(third?.y, second!.y + second!.height + 20)
+  assert.equal(fourth?.y, third!.y + third!.height + 20)
+
+  // 分隔线在头部下沿，正文最后一行仍在框内。
+  assert.ok(second!.dividerY > second!.y + 56)
+  assert.ok(second!.contentTop > second!.dividerY)
+  assert.ok(second!.contentTop + (second!.lines.length - 1) * payload.lineStep < second!.y + second!.height)
+  assert.equal(payload.height, fourth!.y + fourth!.height + 80)
+})
+
+test('面板数据：展开正文按框宽折行，每行不超过可用列数', () => {
+  const payload = buildPreviewPayload(deploy, null, new Set(['站点巡检节点']))
+  assert.ok(payload)
+
+  const node = payload.nodes.find((entry) => entry.name === '站点巡检节点')
+  assert.ok(node)
+  assert.ok(node.lines.length >= 3)
+  for (const line of node.lines) {
+    const columns = [...line].reduce(
+      (width, char) => width + (/[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6]/.test(char) ? 2 : 1),
+      0,
+    )
+    assert.ok(columns <= 26, `${line} 有 ${columns} 列`)
+  }
+})
+
+test('面板数据：边从展开节点的实际下沿出发', () => {
+  const payload = buildPreviewPayload(deploy, null, new Set(['上线安装节点']))
+  assert.ok(payload)
+
+  const node = payload.nodes.find((entry) => entry.name === '上线安装节点')
+  const edge = payload.edges.find((entry) => entry.from === '上线安装节点')
+  assert.ok(node)
+  assert.ok(edge)
+  assert.equal(edge.y1, node.y + node.height)
 })
 
 test('有结构缺陷时不产出新图', () => {

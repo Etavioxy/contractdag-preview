@@ -107,6 +107,30 @@ test('连线指向未声明的节点时照样排版，不抛错', () => {
   assert.deepEqual(boxesToObject(layout(model)), { 甲: { x: 80, y: 24, width: 160, height: 56 } })
 })
 
+test('方向：给单个节点指定更高时，后续层整体下移，交叉方向不动', () => {
+  assert.deepEqual(
+    [...layout(chainModel(), { heights: { 甲: 120 } })].map(([name, box]) => [name, box.x, box.y, box.height]),
+    [
+      ['甲', 180, 24, 120],
+      ['丙', 80, 164, 56],
+      ['乙', 280, 164, 56],
+      ['丁', 180, 240, 56],
+    ],
+  )
+})
+
+test('方向：同层里最高的那个决定层距，同层其他节点仍与它顶对齐', () => {
+  assert.deepEqual(
+    [...layout(chainModel(), { heights: { 乙: 100 } })].map(([name, box]) => [name, box.x, box.y, box.height]),
+    [
+      ['甲', 180, 24, 56],
+      ['丙', 80, 100, 56],
+      ['乙', 280, 100, 100],
+      ['丁', 180, 220, 56],
+    ],
+  )
+})
+
 test('空模型排出空表', () => {
   assert.equal(layout({ nodes: [], links: [] }).size, 0)
 })

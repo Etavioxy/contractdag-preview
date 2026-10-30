@@ -10,6 +10,8 @@ import { buildPreviewPayload, type PreviewPayload } from './payload.ts'
 const panels = new Map<string, vscode.WebviewPanel>()
 const payloads = new Map<string, PreviewPayload>()
 const highlights = new Map<string, string | null>()
+/** 展开是布局输入：契约分区撑高节点，层距要按撑高后重算，所以状态留在宿主。 */
+const expansions = new Map<string, Set<string>>()
 const timers = new Map<string, ReturnType<typeof setTimeout>>()
 const debounceMs = 80
 
@@ -52,6 +54,7 @@ export function openPreview(
     panels.delete(key)
     payloads.delete(key)
     highlights.delete(key)
+    expansions.delete(key)
     const timer = timers.get(key)
     if (timer !== undefined) clearTimeout(timer)
     timers.delete(key)
@@ -90,7 +93,7 @@ export function hasPreview(document: vscode.TextDocument): boolean {
   return panels.has(document.uri.toString())
 }
 
-/** 剧本用的合成展开：让 webview 走它自己那条渲染契约分区的路。 */
+/** 剧本用的合成展开：让 webview 走它自己那条上报路，再由宿主重排。 */
 export function requestExpand(document: vscode.TextDocument, name: string): boolean {
   const panel = panels.get(document.uri.toString())
   if (panel === undefined) return false
@@ -129,9 +132,23 @@ function handleMessage(document: vscode.TextDocument, message: unknown): void {
       if (typeof name === 'string') void revealNode(document, name)
       return
     }
+    case 'expand': {
+      const name = (payload as { name?: unknown } | undefined)?.name
+      if (typeof name === 'string') toggleExpansion(document, name)
+      return
+    }
     default:
       return
   }
+}
+
+function toggleExpansion(document: vscode.TextDocument, name: string): void {
+  const key = document.uri.toString()
+  const expanded = expansions.get(key) ?? new Set<string>()
+  if (expanded.has(name)) expanded.delete(name)
+  else expanded.add(name)
+  expansions.set(key, expanded)
+  refresh(document)
 }
 
 function refresh(document: vscode.TextDocument): void {
@@ -140,7 +157,7 @@ function refresh(document: vscode.TextDocument): void {
   if (panel === undefined) return
 
   const analysis = parse(document.getText())
-  const payload = buildPreviewPayload(analysis, highlights.get(key) ?? null)
+  const payload = buildPreviewPayload(analysis, highlights.get(key) ?? null, expansions.get(key) ?? new Set<string>())
   if (payload === undefined) {
     const messages = analysis.diagnostics.map((diagnostic) => diagnostic.message)
     void panel.webview.postMessage({ type: 'stale', payload: { messages } })
