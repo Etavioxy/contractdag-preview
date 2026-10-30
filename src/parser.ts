@@ -3,6 +3,7 @@
 import { inspect } from './defects.ts'
 import {
   createStyleSheet,
+  directionAliases,
   directionValues,
   type ContractModel,
   type DagNode,
@@ -287,11 +288,16 @@ function readStyle(lines: string[], from: number, style: StyleSheet): number {
 function applyStyleCommand(style: StyleSheet, command: syntax.StyleCommand, range: SourceRange): void {
   switch (command.kind) {
     case 'direction': {
-      const value = command.value.toUpperCase()
-      if (!directionValues.includes(value as StyleSheet['direction'])) {
-        throw fail('bad-style-value', `direction 只有 ${directionValues.join(' / ')}，写成了 ${command.value}`, range)
+      const written = command.value.toUpperCase()
+      const value = (directionAliases[written] ?? written) as StyleSheet['direction']
+      if (!directionValues.includes(value)) {
+        throw fail(
+          'bad-style-value',
+          `direction 只有 ${directionValues.join(' / ')}（TD 同 TB），写成了 ${command.value}`,
+          range,
+        )
       }
-      style.direction = value as StyleSheet['direction']
+      style.direction = value
       return
     }
     case 'gap': {

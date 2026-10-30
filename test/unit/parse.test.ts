@@ -117,6 +117,33 @@ test('样式区三句读成呈现参数', () => {
   assert.deepEqual(analysis.style.linkStyles.map((entry) => [entry.from, entry.to]), [['甲', '乙']])
 })
 
+test('direction 收 mermaid 的 TD，读进来归一到 TB', () => {
+  const source = [
+    '<nodes>',
+    '[甲:change]',
+    'path = /a',
+    'destination = 做完。',
+    '',
+    '[乙:root]',
+    'destination = 收尾。',
+    '</nodes>',
+    '',
+    '<links>',
+    '[[甲 -> 乙]]',
+    'artifact = x',
+    '</links>',
+    '',
+    '<style>',
+    'direction td',
+    '</style>',
+  ].join('\n')
+
+  const analysis = parse(source)
+
+  assert.deepEqual(analysis.diagnostics, [])
+  assert.equal(analysis.style.direction, 'TB')
+})
+
 const broken: Array<{ name: string; source: string; code: string; line: number }> = [
   {
     name: '区名写错',

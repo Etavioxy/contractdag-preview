@@ -203,6 +203,9 @@ function toStateRecord(payload: unknown): Record<string, unknown> {
     expanded,
     highlight: typeof source['highlight'] === 'string' ? source['highlight'] : null,
     viewBox: typeof source['viewBox'] === 'string' ? source['viewBox'] : '',
+    scale: typeof source['scale'] === 'number' ? source['scale'] : -1,
+    scrollX: typeof source['scrollX'] === 'number' ? source['scrollX'] : -1,
+    scrollY: typeof source['scrollY'] === 'number' ? source['scrollY'] : -1,
   }
 }
 

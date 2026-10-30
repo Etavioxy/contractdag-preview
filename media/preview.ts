@@ -1,16 +1,47 @@
-/** webview 侧的渲染脚本：只负责把面板送来的数据画成 SVG，并把点击与高亮回报给面板。 */
+/** webview 侧的渲染脚本：画图、管理视口（缩放与拖动，带阻尼）、把点击与状态回报给面板。 */
 
 import type { PreviewPayload } from '../src/panel/payload.ts'
+import {
+  anchorScroll,
+  approach,
+  clampScroll,
+  densityOf,
+  fitScale,
+  isSettled,
+  scaleEpsilon,
+  scaledSize,
+  scrollEpsilon,
+  stepScale,
+} from '../src/panel/viewport.ts'
 
 declare function acquireVsCodeApi(): { postMessage(message: unknown): void }
 
 const vscode = acquireVsCodeApi()
 const namespace = 'http://www.w3.org/2000/svg'
 const arrowLength = 7
+/** 位移小于这个像素数才算点击；超过就是拖动，不跳编辑器。 */
+const dragThreshold = 4
+
+interface ZoomRun {
+  fromScale: number
+  toScale: number
+  fromScroll: { x: number; y: number }
+  toScroll: { x: number; y: number }
+}
 
 let current: PreviewPayload | null = null
 let highlighted: string | null = null
+let firstRender = true
 
+let scale = 1
+let scroll = { x: 0, y: 0 }
+let targetScroll = { x: 0, y: 0 }
+let zoom: ZoomRun | null = null
+let frame = 0
+let drag: { pointerId: number; pointerX: number; pointerY: number; scrollX: number; scrollY: number; moved: number } | null =
+  null
+
+const viewport = document.getElementById('viewport') as HTMLElement
 const graph = document.getElementById('graph') as unknown as SVGSVGElement
 const stale = document.getElementById('stale') as HTMLElement
 
@@ -25,6 +56,14 @@ function element<K extends keyof SVGElementTagNameMap>(
   const created = document.createElementNS(namespace, name)
   for (const [key, value] of Object.entries(attributes)) created.setAttribute(key, String(value))
   return created
+}
+
+function contentSize(): { width: number; height: number } {
+  return { width: current?.width ?? 0, height: current?.height ?? 0 }
+}
+
+function viewportSize(): { width: number; height: number } {
+  return { width: viewport.clientWidth, height: viewport.clientHeight }
 }
 
 function render(payload: PreviewPayload): void {
@@ -98,10 +137,24 @@ function render(payload: PreviewPayload): void {
       group.append(body)
     }
 
-    group.addEventListener('click', () => post({ type: 'reveal', payload: { name: node.name } }))
+    group.addEventListener('click', () => {
+      if (drag !== null && drag.moved > dragThreshold) return
+      post({ type: 'reveal', payload: { name: node.name } })
+    })
     graph.append(group)
   }
 
+  if (firstRender) {
+    firstRender = false
+    scroll = { x: 0, y: 0 }
+    targetScroll = { x: 0, y: 0 }
+    scale = fitScale(viewportSize(), contentSize())
+  } else {
+    scroll = clampScroll(scroll, viewportSize(), scaledSize(contentSize(), scale))
+    targetScroll = { x: scroll.x, y: scroll.y }
+  }
+
+  applyView()
   postState()
 }
 
@@ -114,12 +167,66 @@ function arrowHead(edge: PreviewPayload['edges'][number]): SVGPolygonElement {
   const tipY = edge.y2 + signY * arrowLength
 
   return vertical
-    ? element('polygon', {
-        points: `${tipX},${tipY} ${tipX - 4},${edge.y2} ${tipX + 4},${edge.y2}`,
-      })
-    : element('polygon', {
-        points: `${tipX},${tipY} ${edge.x2},${tipY - 4} ${edge.x2},${tipY + 4}`,
-      })
+    ? element('polygon', { points: `${tipX},${tipY} ${tipX - 4},${edge.y2} ${tipX + 4},${edge.y2}` })
+    : element('polygon', { points: `${tipX},${tipY} ${edge.x2},${tipY - 4} ${edge.x2},${tipY + 4}` })
+}
+
+/** 比例决定元素的像素尺寸，viewBox 恒为内容坐标系，所以缩放不影响坐标。 */
+function applyView(): void {
+  if (current === null) return
+  const size = scaledSize(contentSize(), scale)
+  graph.style.width = `${size.width}px`
+  graph.style.height = `${size.height}px`
+  graph.setAttribute('data-density', densityOf(scale))
+  viewport.scrollLeft = scroll.x
+  viewport.scrollTop = scroll.y
+}
+
+function start(): void {
+  if (frame === 0) frame = requestAnimationFrame(tick)
+}
+
+/** 每帧朝目标走一步；比例与滚动共用一次指数逼近，滚动按比例进度插值，锚点才不漂。 */
+function tick(): void {
+  frame = 0
+  if (current === null) return
+
+  let busy = false
+  if (zoom !== null) {
+    const span = zoom.toScale - zoom.fromScale
+    scale = approach(scale, zoom.toScale)
+    const progress = span === 0 ? 1 : (scale - zoom.fromScale) / span
+    scroll = {
+      x: zoom.fromScroll.x + (zoom.toScroll.x - zoom.fromScroll.x) * progress,
+      y: zoom.fromScroll.y + (zoom.toScroll.y - zoom.fromScroll.y) * progress,
+    }
+    if (isSettled(scale, zoom.toScale, scaleEpsilon)) {
+      scale = zoom.toScale
+      scroll = { ...zoom.toScroll }
+      zoom = null
+    }
+    targetScroll = { x: scroll.x, y: scroll.y }
+    busy = true
+  } else if (!isSettled(scroll.x, targetScroll.x, scrollEpsilon) || !isSettled(scroll.y, targetScroll.y, scrollEpsilon)) {
+    scroll = { x: approach(scroll.x, targetScroll.x), y: approach(scroll.y, targetScroll.y) }
+    busy = true
+  }
+
+  scroll = clampScroll(scroll, viewportSize(), scaledSize(contentSize(), scale))
+  applyView()
+
+  if (busy) start()
+  else postState()
+}
+
+function requestZoom(nextScale: number, anchor: { x: number; y: number }): void {
+  const target = anchorScroll({ scale, scrollX: scroll.x, scrollY: scroll.y }, nextScale, anchor)
+  zoom = { fromScale: scale, toScale: nextScale, fromScroll: { ...scroll }, toScroll: target }
+  start()
+}
+
+function anchorAtCenter(): { x: number; y: number } {
+  return { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 }
 }
 
 function applyHighlight(name: string | null): void {
@@ -145,6 +252,9 @@ function postState(): void {
       viewBox: graph.getAttribute('viewBox') ?? '',
       contractLines,
       expanded,
+      scale: Math.round(scale * 100),
+      scrollX: Math.round(scroll.x),
+      scrollY: Math.round(scroll.y),
     },
   })
 }
@@ -153,6 +263,86 @@ function showStale(messages: string[]): void {
   stale.hidden = false
   stale.textContent = `文法或结构有问题，先前的图保留：${messages.join('；')}`
 }
+
+viewport.addEventListener(
+  'wheel',
+  (event: WheelEvent) => {
+    event.preventDefault()
+    if (event.ctrlKey || event.metaKey) {
+      const rect = viewport.getBoundingClientRect()
+      requestZoom(stepScale(zoom?.toScale ?? scale, event.deltaY < 0), {
+        x: event.clientX - rect.left,
+        y: event.clientY - rect.top,
+      })
+      return
+    }
+
+    const step = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY
+    targetScroll = clampScroll(
+      { x: targetScroll.x + (event.shiftKey ? step : event.deltaX), y: targetScroll.y + (event.shiftKey ? 0 : step) },
+      viewportSize(),
+      scaledSize(contentSize(), scale),
+    )
+    start()
+  },
+  { passive: false },
+)
+
+viewport.addEventListener('pointerdown', (event: PointerEvent) => {
+  if (event.button !== 0) return
+  drag = {
+    pointerId: event.pointerId,
+    pointerX: event.clientX,
+    pointerY: event.clientY,
+    scrollX: scroll.x,
+    scrollY: scroll.y,
+    moved: 0,
+  }
+  viewport.setPointerCapture(event.pointerId)
+})
+
+viewport.addEventListener('pointermove', (event: PointerEvent) => {
+  if (drag === null || event.pointerId !== drag.pointerId) return
+  const dx = event.clientX - drag.pointerX
+  const dy = event.clientY - drag.pointerY
+  drag.moved = Math.max(drag.moved, Math.hypot(dx, dy))
+  if (drag.moved <= dragThreshold) return
+
+  // 拖动不阻尼：手指到哪图到哪，阻尼加在这里会跟手不及。
+  zoom = null
+  scroll = clampScroll({ x: drag.scrollX - dx, y: drag.scrollY - dy }, viewportSize(), scaledSize(contentSize(), scale))
+  targetScroll = { x: scroll.x, y: scroll.y }
+  applyView()
+})
+
+function endDrag(event: PointerEvent): void {
+  if (drag === null || event.pointerId !== drag.pointerId) return
+  if (viewport.hasPointerCapture(event.pointerId)) viewport.releasePointerCapture(event.pointerId)
+  window.setTimeout(() => {
+    drag = null
+  }, 0)
+}
+
+viewport.addEventListener('pointerup', endDrag)
+viewport.addEventListener('pointercancel', endDrag)
+
+document.getElementById('zoom-in')?.addEventListener('click', () => {
+  requestZoom(stepScale(zoom?.toScale ?? scale, true), anchorAtCenter())
+})
+
+document.getElementById('zoom-out')?.addEventListener('click', () => {
+  requestZoom(stepScale(zoom?.toScale ?? scale, false), anchorAtCenter())
+})
+
+document.getElementById('zoom-fit')?.addEventListener('click', () => {
+  zoom = {
+    fromScale: scale,
+    toScale: fitScale(viewportSize(), contentSize()),
+    fromScroll: { ...scroll },
+    toScroll: { x: 0, y: 0 },
+  }
+  start()
+})
 
 window.addEventListener('message', (event: MessageEvent) => {
   const message = event.data as { type: string; payload?: unknown }

@@ -71,6 +71,9 @@ export const defaultGap = 20
 
 export const directionValues: readonly StyleSheet['direction'][] = ['TB', 'BT', 'LR', 'RL']
 
+/** mermaid 把自上而下写成 TD，这里照收，读进来归一到 TB。 */
+export const directionAliases: Record<string, StyleSheet['direction']> = { TD: 'TB' }
+
 export function createStyleSheet(): StyleSheet {
   return { direction: 'TB', gap: defaultGap, classDefs: {}, classes: [], linkStyles: [] }
 }
