@@ -2,7 +2,7 @@
   "name": "contractdag-preview",
   "displayName": "Contract DAG Preview",
   "description": "把契约声明文件画成有向无环图",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "contractdag",
   "private": true,
   "type": "module",
@@ -29,9 +29,28 @@
       },
       {
         "command": "contractdag.preview",
-        "title": "Contract DAG: 打开预览"
+        "title": "Contract DAG: 打开预览",
+        "icon": {
+          "light": "media/icons/contract-dag-light.svg",
+          "dark": "media/icons/contract-dag-dark.svg"
+        }
       }
     ],
+    "menus": {
+      "editor/title": [
+        {
+          "command": "contractdag.preview",
+          "when": "resourceLangId == contract-dag",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "contractdag.preview",
+          "when": "resourceLangId == contract-dag"
+        }
+      ]
+    },
     "languages": [
       {
         "id": "contract-dag",
