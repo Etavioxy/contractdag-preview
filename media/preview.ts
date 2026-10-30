@@ -1,6 +1,7 @@
 /** webview 侧的渲染脚本：画图、管理视口（缩放与拖动，带阻尼）、把点击与状态回报给面板。 */
 
 import type { PreviewPayload } from '../src/panel/payload.ts'
+import { beginPointer, isClick, isDrag, movePointer, type PointerTrack } from '../src/panel/gesture.ts'
 import {
   anchorScroll,
   approach,
@@ -9,6 +10,7 @@ import {
   finiteOffset,
   fitScale,
   isSettled,
+  panBy,
   scaleEpsilon,
   scaledSize,
   stepScale,
@@ -19,8 +21,6 @@ declare function acquireVsCodeApi(): { postMessage(message: unknown): void }
 const vscode = acquireVsCodeApi()
 const namespace = 'http://www.w3.org/2000/svg'
 const arrowLength = 7
-/** 位移小于这个像素数才算点击；超过就是拖动，不跳编辑器。 */
-const dragThreshold = 4
 
 interface ZoomRun {
   fromScale: number
@@ -40,8 +40,9 @@ let frame = 0
 let reportTimer = 0
 /** 滚轮到底进没进来、进来的是哪个轴：位移不动时靠这三个数字分辨是没事件还是被钳住。 */
 const wheelStats = { count: 0, deltaX: 0, deltaY: 0 }
-let drag: { pointerId: number; pointerX: number; pointerY: number; scrollX: number; scrollY: number; moved: number } | null =
-  null
+let drag: { pointerId: number; track: PointerTrack; scrollX: number; scrollY: number } | null = null
+/** 拖动结束会跟一个 click；这个标记让那次 click 不跳编辑器。 */
+let suppressClick = false
 
 const viewport = document.getElementById('viewport') as HTMLElement
 const graph = document.getElementById('graph') as unknown as SVGSVGElement
@@ -140,7 +141,10 @@ function render(payload: PreviewPayload): void {
     }
 
     group.addEventListener('click', () => {
-      if (drag !== null && drag.moved > dragThreshold) return
+      if (suppressClick) {
+        suppressClick = false
+        return
+      }
       post({ type: 'reveal', payload: { name: node.name } })
     })
     graph.append(group)
@@ -296,8 +300,9 @@ viewport.addEventListener(
     wheelStats.deltaX = event.deltaX
     wheelStats.deltaY = event.deltaY
     zoom = null
-    scroll = clampScroll(
-      { x: scroll.x + (event.shiftKey ? step : event.deltaX), y: scroll.y + (event.shiftKey ? 0 : step) },
+    scroll = panBy(
+      scroll,
+      { dx: event.shiftKey ? step : event.deltaX, dy: event.shiftKey ? 0 : step },
       viewportSize(),
       scaledSize(contentSize(), scale),
     )
@@ -309,37 +314,44 @@ viewport.addEventListener(
 
 viewport.addEventListener('pointerdown', (event: PointerEvent) => {
   if (event.button !== 0) return
+  suppressClick = false
   drag = {
     pointerId: event.pointerId,
-    pointerX: event.clientX,
-    pointerY: event.clientY,
+    track: beginPointer(event.clientX, event.clientY),
     scrollX: scroll.x,
     scrollY: scroll.y,
-    moved: 0,
   }
-  viewport.setPointerCapture(event.pointerId)
+  // 这里不设指针捕获：一旦在按下时就捕获，随后的 click 会派发给视口，节点的点击永远收不到。
 })
 
 viewport.addEventListener('pointermove', (event: PointerEvent) => {
   if (drag === null || event.pointerId !== drag.pointerId) return
-  const dx = event.clientX - drag.pointerX
-  const dy = event.clientY - drag.pointerY
-  drag.moved = Math.max(drag.moved, Math.hypot(dx, dy))
-  if (drag.moved <= dragThreshold) return
+  drag.track = movePointer(drag.track, event.clientX, event.clientY)
+  if (!isDrag(drag.track)) return
 
-  // 拖动不阻尼：手指到哪图到哪，阻尼加在这里会跟手不及。
+  // 判定成拖动之后才捕获：单击不经过捕获，拖动也不会跑出视口。
+  if (!viewport.hasPointerCapture(event.pointerId)) viewport.setPointerCapture(event.pointerId)
+
   zoom = null
-  scroll = clampScroll({ x: drag.scrollX - dx, y: drag.scrollY - dy }, viewportSize(), scaledSize(contentSize(), scale))
+  scroll = panBy(
+    { x: drag.scrollX, y: drag.scrollY },
+    { dx: -(drag.track.x - drag.track.startX), dy: -(drag.track.y - drag.track.startY) },
+    viewportSize(),
+    scaledSize(contentSize(), scale),
+  )
   applyView()
 })
 
 function endDrag(event: PointerEvent): void {
   if (drag === null || event.pointerId !== drag.pointerId) return
   if (viewport.hasPointerCapture(event.pointerId)) viewport.releasePointerCapture(event.pointerId)
-  if (drag.moved > dragThreshold) scheduleReport()
-  window.setTimeout(() => {
-    drag = null
-  }, 0)
+  if (isDrag(drag.track)) {
+    suppressClick = true
+    scheduleReport()
+  } else {
+    post({ type: 'probe', payload: { kind: 'click-gesture', scrollX: '', scrollY: '' } })
+  }
+  drag = null
 }
 
 viewport.addEventListener('pointerup', endDrag)
@@ -382,6 +394,15 @@ window.addEventListener('message', (event: MessageEvent) => {
       // 展开要重排，由宿主算新坐标后整份重发。
       post({ type: 'expand', payload: { name: (message.payload as { name: string }).name } })
       break
+    case 'wheel': {
+      // 剧本用的合成立方位移：和真实滚轮走同一个入口，只是不经过 DOM 监听器。
+      const { dx, dy } = message.payload as { dx: number; dy: number }
+      zoom = null
+      scroll = panBy(scroll, { dx, dy }, viewportSize(), scaledSize(contentSize(), scale))
+      applyView()
+      scheduleReport()
+      break
+    }
     default:
       break
   }

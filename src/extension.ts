@@ -11,6 +11,7 @@ import {
   openPreview,
   requestClick,
   requestExpand,
+  requestWheel,
   setPreviewRecorder,
 } from './panel/graph-panel.ts'
 import { parse } from './parser.ts'
@@ -40,6 +41,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand('contractdag.preview', () => previewActiveDocument()),
     vscode.commands.registerCommand('contractdag.reveal', (name?: unknown) => revealForScenario(name)),
     vscode.commands.registerCommand('contractdag.expand', (name?: unknown) => expandForScenario(name)),
+    vscode.commands.registerCommand('contractdag.wheel', (dx?: unknown, dy?: unknown) => wheelForScenario(dx, dy)),
     vscode.commands.registerCommand('contractdag.closePreview', () => closePreviewForScenario()),
     vscode.workspace.onDidChangeTextDocument((event) => notifyDocumentChanged(event.document)),
     vscode.window.onDidChangeTextEditorSelection((event) => notifySelectionChanged(event.textEditor)),
@@ -141,6 +143,15 @@ function expandForScenario(name: unknown): boolean {
   if (document === undefined || typeof name !== 'string') return false
   const sent = requestExpand(document, name)
   recorder?.record('expand-request', { name, sent })
+  return sent
+}
+
+/** 剧本用的合成滚轮：验「滑得动」，走的是渲染侧同一个位移入口。 */
+function wheelForScenario(dx: unknown, dy: unknown): boolean {
+  const document = previewTargetDocument()
+  if (document === undefined || typeof dx !== 'number' || typeof dy !== 'number') return false
+  const sent = requestWheel(document, dx, dy)
+  recorder?.record('wheel-request', { dx, dy, sent })
   return sent
 }
 

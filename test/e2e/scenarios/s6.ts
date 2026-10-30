@@ -48,4 +48,16 @@ export async function run(context: ScenarioContext): Promise<void> {
   )
   context.check('展开后框里画出契约分区', expanded !== undefined)
   context.check('契约分区画出三行以上', Number(expanded?.['contractLines']) >= 3)
+
+  const wheelSent = await vscode.commands.executeCommand<boolean>('contractdag.wheel', 0, 64)
+  context.check('合成滚轮送进了 webview', wheelSent === true)
+  const scrolled = await context.waitForRecord(
+    (record) => record['event'] === 'preview-state' && Number(record['scrollY']) > 0,
+    2_000,
+  )
+  context.check('滚轮真的产生了纵向位移', scrolled !== undefined)
+  context.check(
+    '位移回报的是数字不是兜底值',
+    typeof scrolled?.['scrollX'] === 'number' && typeof scrolled?.['scrollY'] === 'number',
+  )
 }

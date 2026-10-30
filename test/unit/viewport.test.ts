@@ -9,6 +9,7 @@ import {
   finiteOffset,
   fitScale,
   isSettled,
+  panBy,
   scaledSize,
   stepScale,
 } from '../../src/panel/viewport.ts'
@@ -59,6 +60,23 @@ test('位移不是有限数时能判出来，供渲染侧复位', () => {
   assert.equal(finiteOffset({ x: 0, y: -20 }), true)
   assert.equal(finiteOffset({ x: Number.NaN, y: 0 }), false)
   assert.equal(finiteOffset({ x: 0, y: Number.POSITIVE_INFINITY }), false)
+})
+
+test('滚轮一步真的产生位移，且结果始终是有限数', () => {
+  const viewport = { width: 571, height: 699 }
+  const content = { width: 720, height: 776 }
+
+  const down = panBy({ x: 0, y: 0 }, { dx: 0, dy: 64 }, viewport, content)
+  assert.ok(down.y > 0, '两次双指竖直滑动之后位移仍是 0，就是滑不动那个回归')
+  assert.equal(down.x, 0)
+  assert.equal(finiteOffset(down), true)
+
+  const sideways = panBy({ x: 0, y: 0 }, { dx: 120, dy: 0 }, viewport, content)
+  assert.ok(sideways.x > 0, '横向同理：只有纵向会动也说明位移没走同一条路')
+  assert.equal(finiteOffset(sideways), true)
+
+  // 一旦出现非有限数就必然被判出来，不会被悄悄写进 transform
+  assert.equal(finiteOffset(panBy({ x: Number.NaN, y: 0 }, { dx: 1, dy: 0 }, viewport, content)), false)
 })
 
 test('适配宽度：宽度贴合且不放大，高度超出留给纵向滚动', () => {

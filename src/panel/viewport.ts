@@ -77,6 +77,16 @@ export function finiteOffset(scroll: Offset): boolean {
   return Number.isFinite(scroll.x) && Number.isFinite(scroll.y)
 }
 
+/** 滚轮一步：先加增量再钳制。位移的唯一入口，单测直接打这里就能覆盖「滑得动」。 */
+export function panBy(
+  scroll: Offset,
+  delta: { dx: number; dy: number },
+  viewport: Size,
+  content: Size,
+): Offset {
+  return clampScroll({ x: scroll.x + delta.dx, y: scroll.y + delta.dy }, viewport, content)
+}
+
 /**
  * 适配宽度：宽度贴合视口且不超过 1，高度超出就让纵向滚动负担。
  * 取两个方向的较小比例会让内容永远装进视口，可滚距离恒为 0，双指滑行等于失效。

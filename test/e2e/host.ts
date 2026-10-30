@@ -18,7 +18,7 @@ const requiredRecords: Record<string, string[]> = {
   s3: ['inspect'],
   s4: ['layout'],
   s5: ['preview', 'preview-state'],
-  s6: ['preview', 'preview-state', 'reveal', 'expand-request'],
+  s6: ['preview', 'preview-state', 'reveal', 'expand-request', 'wheel-request'],
   s7: ['preview', 'preview-state', 'reveal', 'preview-close'],
 }
 

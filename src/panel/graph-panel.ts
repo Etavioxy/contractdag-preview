@@ -101,6 +101,14 @@ export function requestExpand(document: vscode.TextDocument, name: string): bool
   return true
 }
 
+/** 剧本用的合成滚轮：走渲染侧同一个位移入口，验的是「滑得动」而不是 DOM 监听器。 */
+export function requestWheel(document: vscode.TextDocument, dx: number, dy: number): boolean {
+  const panel = panels.get(document.uri.toString())
+  if (panel === undefined) return false
+  void panel.webview.postMessage({ type: 'wheel', payload: { dx, dy } })
+  return true
+}
+
 /** 剧本用的合成点击：让 webview 走它自己那条点击回报的路。 */
 export function requestClick(document: vscode.TextDocument, name: string): boolean {
   const panel = panels.get(document.uri.toString())

@@ -2,7 +2,7 @@
   "name": "contractdag-preview",
   "displayName": "Contract DAG Preview",
   "description": "把契约声明文件画成有向无环图",
-  "version": "0.0.8",
+  "version": "0.0.9",
   "publisher": "contractdag",
   "private": true,
   "type": "module",
