@@ -52,17 +52,25 @@ export function anchorScroll(
   return { scrollX: contentX * nextScale - anchor.x, scrollY: contentY * nextScale - anchor.y }
 }
 
-/** 滚动钳进可滚范围；内容比视口小时归零。 */
+/**
+ * 每个方向允许滑出内容边界的余量，按视口的比例算。
+ * 不给余量时，内容一旦贴合视口，可滚距离就是 0，双指滑行与拖动会完全失效。
+ */
+export const panSlack = 0.5
+
+/** 滚动钳进「内容 + 两侧余量」的范围；余量允许负值，所以平移用 transform 而不是 scrollLeft。 */
 export function clampScroll(
   scroll: { scrollX: number; scrollY: number },
   viewport: Size,
   content: Size,
 ): { scrollX: number; scrollY: number } {
-  const maxX = Math.max(0, content.width - viewport.width)
-  const maxY = Math.max(0, content.height - viewport.height)
+  const slackX = viewport.width * panSlack
+  const slackY = viewport.height * panSlack
+  const maxX = Math.max(0, content.width - viewport.width) + slackX
+  const maxY = Math.max(0, content.height - viewport.height) + slackY
   return {
-    scrollX: Math.min(maxX, Math.max(0, scroll.scrollX)),
-    scrollY: Math.min(maxY, Math.max(0, scroll.scrollY)),
+    scrollX: Math.min(maxX, Math.max(-slackX, scroll.scrollX)),
+    scrollY: Math.min(maxY, Math.max(-slackY, scroll.scrollY)),
   }
 }
 

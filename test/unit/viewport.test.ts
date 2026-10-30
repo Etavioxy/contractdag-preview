@@ -41,14 +41,17 @@ test('锚点缩放：光标下的那处内容不动', () => {
   assert.equal((next.scrollY + anchor.y) / 2, (before.scrollY + anchor.y) / before.scale)
 })
 
-test('滚动钳进可滚范围，内容小于视口时归零', () => {
+test('滚动范围留半个视口余量，负数也允许', () => {
   const viewport = { width: 400, height: 300 }
   const big = { width: 900, height: 700 }
   const small = { width: 200, height: 100 }
 
-  assert.deepEqual(clampScroll({ scrollX: 800, scrollY: 900 }, viewport, big), { scrollX: 500, scrollY: 400 })
-  assert.deepEqual(clampScroll({ scrollX: -20, scrollY: -5 }, viewport, big), { scrollX: 0, scrollY: 0 })
-  assert.deepEqual(clampScroll({ scrollX: 30, scrollY: 30 }, viewport, small), { scrollX: 0, scrollY: 0 })
+  // 上界 = 内容超出视口的部分 + 余量（200 / 150）；下界 = −余量
+  assert.deepEqual(clampScroll({ scrollX: 800, scrollY: 900 }, viewport, big), { scrollX: 700, scrollY: 550 })
+  assert.deepEqual(clampScroll({ scrollX: -300, scrollY: -200 }, viewport, big), { scrollX: -200, scrollY: -150 })
+
+  // 内容比视口小也必须能动，否则贴合视口时双指滑行无处可去
+  assert.deepEqual(clampScroll({ scrollX: 120, scrollY: 80 }, viewport, small), { scrollX: 120, scrollY: 80 })
 })
 
 test('适配宽度：宽度贴合且不放大，高度超出留给纵向滚动', () => {

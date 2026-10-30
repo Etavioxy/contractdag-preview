@@ -167,15 +167,14 @@ function arrowHead(edge: PreviewPayload['edges'][number]): SVGPolygonElement {
     : element('polygon', { points: `${tipX},${tipY} ${edge.x2},${tipY - 4} ${edge.x2},${tipY + 4}` })
 }
 
-/** 比例决定元素的像素尺寸，viewBox 恒为内容坐标系，所以缩放不影响坐标。 */
+/** 比例决定元素的像素尺寸，平移用 transform：viewBox 恒为内容坐标系，坐标不受缩放与平移影响。 */
 function applyView(): void {
   if (current === null) return
   const size = scaledSize(contentSize(), scale)
   graph.style.width = `${size.width}px`
   graph.style.height = `${size.height}px`
+  graph.style.transform = `translate(${-scroll.x}px, ${-scroll.y}px)`
   graph.setAttribute('data-density', densityOf(scale))
-  viewport.scrollLeft = scroll.x
-  viewport.scrollTop = scroll.y
 }
 
 function start(): void {
