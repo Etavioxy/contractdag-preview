@@ -40,14 +40,14 @@
       "editor/title": [
         {
           "command": "contractdag.preview",
-          "when": "resourceLangId == contract-dag",
-          "group": "navigation"
+          "when": "editorLangId == contract-dag",
+          "group": "navigation@1"
         }
       ],
       "commandPalette": [
         {
           "command": "contractdag.preview",
-          "when": "resourceLangId == contract-dag"
+          "when": "editorLangId == contract-dag"
         }
       ]
     },
