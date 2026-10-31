@@ -62,19 +62,28 @@ export function createBodyLayer(container: HTMLElement): BodyLayer {
   }
 }
 
+/**
+ * 浮层跟着相机一起缩放：它挂在节点旁边，比例变了却不变大变小，就会和图的尺度对不上。
+ * 位置仍按屏幕坐标算，缩放交给 transform，锚点取左上角。
+ */
 function place(
   card: HTMLElement,
   node: PreviewNode,
   camera: ViewTransform,
   viewport: { width: number; height: number },
 ): void {
-  const left = node.x * camera.scale - camera.scrollX
-  const right = (node.x + node.width) * camera.scale - camera.scrollX
-  const top = node.y * camera.scale - camera.scrollY
-  const height = card.offsetHeight
+  const scale = camera.scale
+  const left = node.x * scale - camera.scrollX
+  const right = (node.x + node.width) * scale - camera.scrollX
+  const top = node.y * scale - camera.scrollY
+  const width = cardWidth * scale
+  const height = card.offsetHeight * scale
+  const gap = gapFromNode * scale
 
-  const fitsRight = right + gapFromNode + cardWidth + edgeInset <= viewport.width
-  card.style.left = `${fitsRight ? right + gapFromNode : Math.max(edgeInset, left - gapFromNode - cardWidth)}px`
+  const fitsRight = right + gap + width + edgeInset <= viewport.width
+  card.style.transformOrigin = 'top left'
+  card.style.transform = `scale(${scale})`
+  card.style.left = `${fitsRight ? right + gap : Math.max(edgeInset, left - gap - width)}px`
   card.style.top = `${Math.min(Math.max(edgeInset, top), Math.max(edgeInset, viewport.height - height - edgeInset))}px`
 }
 
