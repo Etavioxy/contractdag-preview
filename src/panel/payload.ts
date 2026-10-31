@@ -62,6 +62,8 @@ export interface PreviewEdge {
   y1: number
   x2: number
   y2: number
+  /** 弧线的两个控制点；起点与终点就是 `x1,y1`、`x2,y2`。 */
+  curve: { c1: Point; c2: Point }
   /** 弧线的 SVG 路径。 */
   path: string
   labels: PreviewLabel[]
@@ -173,6 +175,7 @@ export function buildPreviewPayload(
       y1: start.y,
       x2: arrow.baseX,
       y2: arrow.baseY,
+      curve: { c1: curve.c1, c2: curve.c2 },
       path: `M ${start.x},${start.y} C ${curve.c1.x},${curve.c1.y} ${curve.c2.x},${curve.c2.y} ${arrow.baseX},${arrow.baseY}`,
       labels: labelsAlong(curve, link.artifacts),
       arrow,
