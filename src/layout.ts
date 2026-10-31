@@ -11,8 +11,6 @@ export interface LayoutOptions {
   gapCross?: number
   marginX?: number
   marginY?: number
-  /** 按节点覆盖高度：展开的契约分区比折叠态高，层距要按最高那个算。 */
-  heights?: Record<string, number>
 }
 
 export interface NodeBox {
@@ -29,7 +27,7 @@ export interface LayoutJson {
   boxes: Record<string, NodeBox>
 }
 
-export const layoutDefaults: Required<Omit<LayoutOptions, 'heights'>> = {
+export const layoutDefaults: Required<LayoutOptions> = {
   direction: 'TB',
   // 层间要同时放下弧线、箭头与若干个产物标签：20 太挤，标签会被框压住。
   gap: 48,
@@ -42,17 +40,17 @@ export const layoutDefaults: Required<Omit<LayoutOptions, 'heights'>> = {
 
 export function layout(model: ContractModel, options: LayoutOptions = {}): LayoutResult {
   const settings = { ...layoutDefaults, ...options }
-  const heights = options.heights ?? {}
-  const heightOf = (name: string): number => heights[name] ?? settings.nodeHeight
 
   const names = [...new Set(model.nodes.map((node) => node.name))]
   const boxes: LayoutResult = new Map()
   if (names.length === 0) return boxes
 
   const known = new Set(names)
+  // 分层算法只认 DAG：环上的边先按出现顺序摘掉，画图仍用原模型，边上标红由渲染侧负责。
+  const parents = acyclicParents(model, known)
   const data = names.map((name) => ({
     id: name,
-    parentIds: model.links.filter((link) => link.to === name && known.has(link.from)).map((link) => link.from),
+    parentIds: parents.get(name) ?? [],
   }))
 
   const graph = graphStratify()(data)
@@ -65,12 +63,11 @@ export function layout(model: ContractModel, options: LayoutOptions = {}): Layou
   const vertical = settings.direction === 'TB' || settings.direction === 'BT'
   const reversed = settings.direction === 'BT' || settings.direction === 'RL'
 
-  // 每个节点在流动方向上的长度（TB 是高度，LR 是宽度）与在交叉方向上的长度各自算，
-  // 再取每层最大值：展开的节点只把本层撑大，不压邻居。
-  const flowOf = (name: string): number => (vertical ? heightOf(name) : settings.nodeWidth)
-  const crossOf = (name: string): number => (vertical ? settings.nodeWidth : heightOf(name))
-  const flowExtent = layers.map((layer) => Math.max(...layer.map(flowOf)))
-  const crossExtent = layers.map((layer) => Math.max(...layer.map(crossOf)))
+  // 节点尺寸统一：流动方向与交叉方向的长度都是常量，层距与格位只由 gap 与层内数量决定。
+  const flowOf = (): number => (vertical ? settings.nodeHeight : settings.nodeWidth)
+  const crossOf = (): number => (vertical ? settings.nodeWidth : settings.nodeHeight)
+  const flowExtent = layers.map(() => flowOf())
+  const crossExtent = layers.map(() => crossOf())
 
   const visualLayers = reversed ? [...layers].reverse() : layers
   const visualFlow = reversed ? [...flowExtent].reverse() : flowExtent
@@ -91,7 +88,7 @@ export function layout(model: ContractModel, options: LayoutOptions = {}): Layou
 
     for (const [order, name] of layer.entries()) {
       const cross = layerStart + order * crossStep
-      const box = { width: settings.nodeWidth, height: heightOf(name) }
+      const box = { width: settings.nodeWidth, height: settings.nodeHeight }
       boxes.set(
         name,
         vertical ? { x: cross, y: flow, ...box } : { x: flow, y: cross, ...box },
@@ -118,4 +115,41 @@ function toLayers(placed: Array<{ name: string; x: number; y: number }>, layerSt
   }
 
   return layers
+}
+
+/**
+ * 按出现顺序收边，跳过会成环的那一条：`to` 已经能走回 `from` 时，这条边只进图、不进分层。
+ * 分层算法只认 DAG，环留给渲染侧标红，排版不等它。
+ */
+function acyclicParents(model: ContractModel, known: Set<string>): Map<string, string[]> {
+  const parents = new Map<string, string[]>()
+  const children = new Map<string, string[]>()
+
+  const reaches = (start: string, goal: string): boolean => {
+    const seen = new Set<string>()
+    const queue = [start]
+    while (queue.length > 0) {
+      const current = queue.pop() as string
+      if (current === goal) return true
+      if (seen.has(current)) continue
+      seen.add(current)
+      for (const next of children.get(current) ?? []) queue.push(next)
+    }
+    return false
+  }
+
+  for (const link of model.links) {
+    if (!known.has(link.from) || !known.has(link.to)) continue
+    if (reaches(link.to, link.from)) continue
+
+    const list = parents.get(link.to)
+    if (list === undefined) parents.set(link.to, [link.from])
+    else if (!list.includes(link.from)) list.push(link.from)
+
+    const out = children.get(link.from)
+    if (out === undefined) children.set(link.from, [link.to])
+    else if (!out.includes(link.to)) out.push(link.to)
+  }
+
+  return parents
 }

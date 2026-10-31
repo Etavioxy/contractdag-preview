@@ -14,23 +14,17 @@ function boxesToObject(boxes: Map<string, NodeBox>): Record<string, NodeBox> {
   return Object.fromEntries(boxes)
 }
 
+const zero = { startLine: 0, startCharacter: 0, endLine: 0, endCharacter: 0 }
+
+function node(name: string): ContractModel['nodes'][number] {
+  return { name, kind: 'change', path: ['/a'], destination: ['做完。'], range: zero, keyRanges: {} }
+}
+
+function link(from: string, to: string, artifact = 'x'): ContractModel['links'][number] {
+  return { from, to, artifacts: [artifact], properties: {}, range: zero, keyRanges: {} }
+}
+
 function chainModel(): ContractModel {
-  const node = (name: string): ContractModel['nodes'][number] => ({
-    name,
-    kind: 'change',
-    path: ['/a'],
-    destination: ['做完。'],
-    range: { startLine: 0, startCharacter: 0, endLine: 0, endCharacter: 0 },
-    keyRanges: {},
-  })
-  const link = (from: string, to: string, artifact: string): ContractModel['links'][number] => ({
-    from,
-    to,
-    artifacts: [artifact],
-    properties: {},
-    range: { startLine: 0, startCharacter: 0, endLine: 0, endCharacter: 0 },
-    keyRanges: {},
-  })
   return {
     nodes: [node('甲'), node('乙'), node('丙'), node('丁')],
     links: [link('甲', '乙', 'x'), link('甲', '丙', 'y'), link('乙', '丁', 'z'), link('丙', '丁', 'w')],
@@ -109,30 +103,27 @@ test('连线指向未声明的节点时照样排版，不抛错', () => {
   assert.deepEqual(boxesToObject(layout(model)), { 甲: { x: 80, y: 24, width: 160, height: 56 } })
 })
 
-test('方向：给单个节点指定更高时，后续层整体下移，交叉方向不动', () => {
-  assert.deepEqual(
-    [...layout(chainModel(), { heights: { 甲: 120 } })].map(([name, box]) => [name, box.x, box.y, box.height]),
-    [
-      ['甲', 180, 24, 120],
-      ['丙', 80, 192, 56],
-      ['乙', 280, 192, 56],
-      ['丁', 180, 296, 56],
-    ],
-  )
-})
-
-test('方向：同层里最高的那个决定层距，同层其他节点仍与它顶对齐', () => {
-  assert.deepEqual(
-    [...layout(chainModel(), { heights: { 乙: 100 } })].map(([name, box]) => [name, box.x, box.y, box.height]),
-    [
-      ['甲', 180, 24, 56],
-      ['丙', 80, 128, 56],
-      ['乙', 280, 128, 100],
-      ['丁', 180, 276, 56],
-    ],
-  )
-})
-
 test('空模型排出空表', () => {
   assert.equal(layout({ nodes: [], links: [] }).size, 0)
+})
+
+test('环上的边不参与分层：先写的那条留下，后写的对边被摘', () => {
+  const boxes = layout({ nodes: [node('甲'), node('乙')], links: [link('甲', '乙'), link('乙', '甲')] })
+
+  assert.equal(boxes.get('甲')?.y, 24)
+  assert.equal(boxes.get('乙')?.y, 128)
+})
+
+test('摘边按出现顺序：反边先写就保留反边', () => {
+  const boxes = layout({ nodes: [node('甲'), node('乙')], links: [link('乙', '甲'), link('甲', '乙')] })
+
+  assert.equal(boxes.get('乙')?.y, 24)
+  assert.equal(boxes.get('甲')?.y, 128)
+})
+
+test('同一对端点写两次只算一个父节点，层不因此多一层', () => {
+  const boxes = layout({ nodes: [node('甲'), node('乙')], links: [link('甲', '乙'), link('甲', '乙')] })
+
+  assert.equal(boxes.get('乙')?.y, 128)
+  assert.equal(boxes.size, 2)
 })
