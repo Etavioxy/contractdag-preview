@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { buildPreviewHtml } from '../../src/panel/html.ts'
+import { estimateTextWidth } from '../../src/panel/labels.ts'
 import { buildPreviewPayload } from '../../src/panel/payload.ts'
 import { parse } from '../../src/parser.ts'
 
@@ -45,15 +46,41 @@ test('面板数据：四个框落在样板的坐标上，三条边的两端贴�
   assert.equal(payload.highlight, null)
 })
 
-test('面板数据：同一缝上的两条边，标签按位次错开', () => {
+test('面板数据：crossing 示例里水平相撞的标签都被错开，缝高仍是 48', () => {
+  const crossing = parse(readFileSync(join(fixtures, '..', '..', 'examples', 'crossing.contractdag'), 'utf8'))
+  const payload = buildPreviewPayload(crossing)
+  assert.ok(payload)
+
+  // 层距没被抬高：第一层的框仍在 128
+  const layer = payload.nodes.filter((node) => ['甲', '乙', '丙'].includes(node.name)).map((node) => node.y)
+  assert.deepEqual([...new Set(layer)], [128])
+
+  // 硬保证：水平区间相交的标签，垂直方向至少隔一个 labelSpacing
+  const labels = payload.edges.flatMap((edge) => edge.labels)
+  for (let left = 0; left < labels.length; left += 1) {
+    for (let right = left + 1; right < labels.length; right += 1) {
+      const first = labels[left]!
+      const second = labels[right]!
+      const overlap =
+        Math.abs(first.x - second.x) < (estimateTextWidth(first.text, 11) + estimateTextWidth(second.text, 11)) / 2
+      if (!overlap) continue
+      assert.ok(Math.abs(first.y - second.y) >= 14, `${first.text} 与 ${second.text} 撞在一起`)
+    }
+  }
+})
+
+test('面板数据：同缝两条边水平分得开时只用一行，不白白错道', () => {
   const payload = buildPreviewPayload(parse(readFileSync(join(fixtures, 'fork.contractdag'), 'utf8')))
   assert.ok(payload)
 
   const outgoing = payload.edges.filter((edge) => edge.from === '甲')
   assert.equal(outgoing.length, 2)
-  const ys = outgoing.map((edge) => edge.labels[0]?.y ?? 0).sort((left, right) => left - right)
-  // L=2 时位次是 1/3 与 2/3，两条标签的垂直距离由层距撑开
-  assert.ok(ys[1]! - ys[0]! >= 14)
+  const first = outgoing[0]?.labels[0]
+  const second = outgoing[1]?.labels[0]
+  assert.ok(first !== undefined && second !== undefined)
+  // 同一条道：y 相同；横向差得开
+  assert.equal(first.y, second.y)
+  assert.ok(Math.abs(first.x - second.x) > 40)
 })
 
 test('面板数据：一条边带多个产物时标签沿弧线散开，不叠在一起', () => {

@@ -11,6 +11,8 @@ export interface LayoutOptions {
   gapCross?: number
   marginX?: number
   marginY?: number
+  /** 每缝的标签道数：决定这一缝要不要比 `gap` 更高。 */
+  seamRows?: number[]
 }
 
 export interface NodeBox {
@@ -27,7 +29,7 @@ export interface LayoutJson {
   boxes: Record<string, NodeBox>
 }
 
-export const layoutDefaults: Required<LayoutOptions> = {
+export const layoutDefaults: Required<Omit<LayoutOptions, 'seamRows'>> = {
   direction: 'TB',
   // 层间要同时放下弧线、箭头与若干个产物标签：20 太挤，标签会被框压住。
   gap: 48,
@@ -40,13 +42,27 @@ export const layoutDefaults: Required<LayoutOptions> = {
 
 /** 一个产物标签占的高度：层间空隙按跨缝标签数增长，步长就用它。 */
 export const labelSpacing = 14
+/** 标签的字形高度：撞不撞只看字形，4px 描边垫底不算。 */
+export const labelHeight = 11
+/** 标签与上下框之间的余量。 */
+export const labelPadding = 4
+
+export interface LayoutDetail {
+  boxes: LayoutResult
+  /** 层序：每层的节点名，下标就是缝号两侧的层号。 */
+  layers: string[][]
+}
 
 export function layout(model: ContractModel, options: LayoutOptions = {}): LayoutResult {
+  return layoutLayers(model, options).boxes
+}
+
+export function layoutLayers(model: ContractModel, options: LayoutOptions = {}): LayoutDetail {
   const settings = { ...layoutDefaults, ...options }
 
   const names = [...new Set(model.nodes.map((node) => node.name))]
   const boxes: LayoutResult = new Map()
-  if (names.length === 0) return boxes
+  if (names.length === 0) return { boxes, layers: [] }
 
   const known = new Set(names)
   // 分层算法只认 DAG：环上的边先按出现顺序摘掉，画图仍用原模型，边上标红由渲染侧负责。
@@ -66,19 +82,11 @@ export function layout(model: ContractModel, options: LayoutOptions = {}): Layou
   const vertical = settings.direction === 'TB' || settings.direction === 'BT'
   const reversed = settings.direction === 'BT' || settings.direction === 'RL'
 
-  // 缝上要放几个标签：按「从这一层出发」统计，一条边只算它出发的那条缝。
-  const layerOf = new Map<string, number>()
-  layers.forEach((layer, index) => {
-    for (const name of layer) layerOf.set(name, index)
-  })
-  const labelsFrom = layers.map(() => 0)
-  for (const link of model.links) {
-    const from = layerOf.get(link.from)
-    if (from === undefined) continue
-    labelsFrom[from] = (labelsFrom[from] ?? 0) + link.artifacts.length
+  // 缝高由这一缝要放几道标签决定：放得下就还是 gap，放不下才长高。
+  const gapOf = (layer: number): number => {
+    const rows = options.seamRows?.[layer] ?? 1
+    return Math.max(settings.gap, labelHeight + (rows - 1) * labelSpacing + 2 * labelPadding)
   }
-  const gapOf = (layer: number): number =>
-    settings.gap + labelSpacing * Math.max(0, (labelsFrom[layer] ?? 0) - 1)
 
   // 节点尺寸统一：流动方向与交叉方向的长度都是常量，层距与格位只由 gap 与层内数量决定。
   const flowOf = (): number => (vertical ? settings.nodeHeight : settings.nodeWidth)
@@ -118,7 +126,7 @@ export function layout(model: ContractModel, options: LayoutOptions = {}): Layou
     flow += visualFlow[layerIndex]! + (visualGaps[layerIndex] ?? settings.gap)
   }
 
-  return boxes
+  return { boxes, layers }
 }
 
 /** 层按 y 递增，层内按 d3-dag 给的 x 从左到右；相邻层距不会小于层距的一半，按这个阈值切层。 */
