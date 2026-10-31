@@ -22,15 +22,25 @@ export function buildPreviewHtml(options: PreviewHtmlOptions): string {
   #controls button { min-width: 26px; height: 24px; padding: 0 6px; border: 0; border-radius: 4px; background: transparent; color: var(--vscode-editor-foreground); font-size: 12px; cursor: pointer; }
   #controls button:hover { background: var(--vscode-toolbar-hoverBackground, #3a3a3a); }
   #stale { position: fixed; left: 8px; right: 8px; bottom: 8px; margin: 0; padding: 6px 8px; border-radius: 4px; background: var(--vscode-inputValidation-errorBackground, #3a1d1d); color: var(--vscode-errorForeground, #f66); font-size: 12px; }
+  #bodies { position: absolute; inset: 0; pointer-events: none; }
+  .body-card { position: absolute; width: 260px; max-height: 60vh; overflow: auto; pointer-events: auto; padding: 6px 8px; border-radius: 6px; background: var(--vscode-editorWidget-background, #232323); border: 1px solid var(--vscode-editorWidget-border, #555); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); }
+  .body-title { margin-bottom: 4px; font-size: 11px; color: var(--vscode-descriptionForeground, #999); }
+  .body-text { margin: 0; font-family: var(--vscode-editor-font-family, monospace); font-size: 11px; line-height: 1.5; white-space: pre; }
+  #hud { position: fixed; left: 12px; bottom: 12px; padding: 3px 8px; border-radius: 6px; font-size: 11px; pointer-events: none; color: var(--vscode-descriptionForeground, #999); background: var(--vscode-editorWidget-background, #232323); border: 1px solid var(--vscode-editorWidget-border, #555); }
+  #defects { position: fixed; left: 12px; bottom: 44px; max-width: 60%; max-height: 30vh; overflow: auto; padding: 6px 8px; border-radius: 6px; font-size: 11px; background: var(--vscode-inputValidation-errorBackground, #3a1d1d); color: var(--vscode-errorForeground, #f66); }
+  .defect-row { white-space: pre-wrap; }
 </style>
 </head>
 <body>
 <div id="viewport"><canvas id="graph"></canvas></div>
+<div id="bodies"></div>
 <div id="controls">
   <button id="zoom-out" title="缩小">−</button>
   <button id="zoom-fit" title="适配宽度">适配宽度</button>
   <button id="zoom-in" title="放大">+</button>
 </div>
+<div id="hud"></div>
+<div id="defects" hidden></div>
 <p id="stale" hidden></p>
 <script nonce="${options.nonce}" src="${options.scriptUri}"></script>
 </body>

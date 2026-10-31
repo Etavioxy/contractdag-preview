@@ -144,20 +144,23 @@ test('图元表：高亮只改描边与线宽，坐标不动', () => {
   assert.equal(boxes[0]?.lineWidth, 1.5)
 })
 
-test('图元表：展开态画分隔线与正文，行距按 payload 的 lineStep', () => {
-  const scene = sceneOf(parse(readFileSync(join(fixtures, 'deploy.contractdag'), 'utf8')), new Set(['上线安装节点']))
+test('图元表：展开只换角标，框与边一个不动，正文不进画布', () => {
+  const folded = sceneOf(parse(readFileSync(join(fixtures, 'deploy.contractdag'), 'utf8')))
+  const expanded = sceneOf(parse(readFileSync(join(fixtures, 'deploy.contractdag'), 'utf8')), new Set(['上线安装节点']))
 
-  const dividers = scene.items.filter(
-    (item): item is Extract<SceneItem, { kind: 'line' }> => item.kind === 'line',
+  assert.deepEqual(rects(expanded), rects(folded), '展开不改变任何框')
+  assert.equal(expanded.height, folded.height)
+  assert.equal(
+    expanded.items.filter((item) => item.kind === 'curve').length,
+    folded.items.filter((item) => item.kind === 'curve').length,
   )
-  assert.equal(dividers.length, 1)
-
-  const payload = buildPreviewPayload(deploy, null, new Set(['上线安装节点']))
-  assert.ok(payload)
-  const node = payload.nodes[1]
-  assert.ok(node)
-  const body = texts(scene).filter((text) => text.size === 10)
-  assert.equal(body.length, node.lines.length)
-  assert.deepEqual(body[0], { text: node.lines[0] ?? '', x: node.x + 8, y: node.contentTop, size: 10 })
-  assert.equal(body[1]?.y, node.contentTop + payload.lineStep)
+  // 正文搬进 DOM 浮层：画布里不再有 10px 的正文行
+  assert.ok(!texts(expanded).some((text) => text.size === 10))
+  // 角标从 ▸ 翻成 ▾，位置不动
+  const chevron = texts(expanded).filter((text) => text.text === '▾' || text.text === '▸')
+  assert.equal(chevron.filter((text) => text.text === '▾').length, 1)
+  assert.deepEqual(
+    chevron.filter((text) => text.text === '▾').map((text) => [text.x, text.y]),
+    [[228, 142]],
+  )
 })

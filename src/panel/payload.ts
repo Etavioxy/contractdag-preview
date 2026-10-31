@@ -22,12 +22,8 @@ export interface PreviewNode {
   width: number
   height: number
   expanded: boolean
-  /** 展开后的契约正文，已按框宽折好行；折叠态为空。 */
+  /** 展开后的契约正文，已按框宽折好行；折叠态为空。只给浮层用，不参与排版。 */
   lines: string[]
-  /** 契约分区与头部之间的分隔线位置。 */
-  dividerY: number
-  /** 第一行正文的基线中心，其余行按 lineStep 递增。 */
-  contentTop: number
   path: string[]
   destination: string[]
   fill?: string
@@ -78,10 +74,6 @@ export interface PreviewPayload {
   height: number
   font: string
   highlight: string | null
-  /** 正文行距，webview 不自带常量。 */
-  lineStep: number
-  /** 契约分区与头部之间的空隙。 */
-  dividerGap: number
   /** 折叠态高度：名字与种类画在这个高度里。 */
   headerHeight: number
 }
@@ -93,11 +85,7 @@ const arrowHalfWidth = 4
 /** 相邻两个产物标签至少留这么高，11px 的字才不叠。 */
 const labelSpacing = 14
 const header = layoutDefaults.nodeHeight
-const lineStep = 13
-const dividerGap = 6
-const linePadTop = 10
-const linePadBottom = 8
-/** 框内正文可用宽度，以半角列计：框宽 160 减去两侧 8px 内边距。 */
+/** 浮层里正文的折行宽度，以半角列计：浮层的可用宽度比框宽，仍按列折，不依赖字体度量。 */
 const contentColumns = 26
 
 /** 文法错或有结构缺陷时不产出新图：调用方保留上一张。 */
@@ -118,17 +106,13 @@ export function buildPreviewPayload(
     classProperties.set(assignment.node, { ...(classProperties.get(assignment.node) ?? {}), ...defined })
   }
 
+  // 正文不再进框：展开只决定浮层里有没有内容，不影响任何框的高度与坐标。
   const linesOf = new Map<string, string[]>()
   for (const node of model.nodes) {
     if (expanded.has(node.name)) linesOf.set(node.name, contractLines(node.path, node.destination))
   }
 
-  const heights: Record<string, number> = {}
-  for (const [name, lines] of linesOf) {
-    heights[name] = header + dividerGap + linePadTop + (lines.length - 1) * lineStep + linePadBottom
-  }
-
-  const boxes = layout(model, { direction: style.direction, gap: style.gap, heights })
+  const boxes = layout(model, { direction: style.direction, gap: style.gap })
 
   const nodes: PreviewNode[] = []
   for (const node of model.nodes) {
@@ -143,8 +127,6 @@ export function buildPreviewPayload(
       ...box,
       expanded: isExpanded,
       lines: linesOf.get(node.name) ?? [],
-      dividerY: box.y + header + dividerGap,
-      contentTop: box.y + header + dividerGap + linePadTop,
       path: node.path,
       destination: node.destination,
       fill: properties['fill'],
@@ -193,8 +175,6 @@ export function buildPreviewPayload(
     height: bottom + canvasMargin,
     font: style.font ?? 'sans-serif',
     highlight,
-    lineStep,
-    dividerGap,
     headerHeight: header,
   }
 }

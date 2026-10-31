@@ -19,6 +19,8 @@ import {
   type ViewTransform,
 } from '../src/panel/viewport.ts'
 import { createRenderer, readPalette } from './renderer.ts'
+import { createBodyLayer } from './ui/body-layer.ts'
+import { createHud } from './ui/hud.ts'
 
 declare function acquireVsCodeApi(): { postMessage(message: unknown): void }
 
@@ -48,6 +50,8 @@ const viewport = document.getElementById('viewport') as HTMLElement
 const canvas = document.getElementById('graph') as HTMLCanvasElement
 const stale = document.getElementById('stale') as HTMLElement
 const renderer = createRenderer(canvas)
+const bodies = createBodyLayer(document.getElementById('bodies') as HTMLElement)
+const hud = createHud(document.getElementById('hud') as HTMLElement)
 
 function post(message: unknown): void {
   vscode.postMessage(message)
@@ -94,6 +98,14 @@ function applyView(): void {
   scene = buildScene(current, camera(), readPalette(document.body))
   renderer.draw(scene, camera(), current.font)
   canvas.dataset['density'] = scene.density
+
+  // 正文在 DOM 层：跟随相机摆放，但不进画布，框也不会被撑高。
+  bodies.update(
+    current.nodes.filter((node) => node.expanded),
+    camera(),
+    viewportSize(),
+  )
+  hud.set(`${current.nodes.length} 节点 · ${current.edges.length} 边 · ${Math.round(scale * 100)}%`)
 }
 
 function start(): void {
@@ -189,6 +201,7 @@ function postState(): void {
       devicePixelRatio: window.devicePixelRatio,
       sceneItems: scene?.items.length ?? 0,
       density: scene?.density ?? '',
+      bodyCards: document.querySelectorAll('.body-card').length,
     },
   })
 }

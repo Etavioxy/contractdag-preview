@@ -68,15 +68,6 @@ function paint(context: CanvasRenderingContext2D, item: SceneItem, family: strin
       }
       return
     }
-    case 'line': {
-      context.beginPath()
-      context.moveTo(item.x1, item.y1)
-      context.lineTo(item.x2, item.y2)
-      context.strokeStyle = item.stroke
-      context.lineWidth = item.lineWidth
-      context.stroke()
-      return
-    }
     case 'curve': {
       context.beginPath()
       context.moveTo(item.p0.x, item.p0.y)

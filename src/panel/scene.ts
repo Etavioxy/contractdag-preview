@@ -29,16 +29,6 @@ export interface SceneRect {
   lineWidth?: number
 }
 
-export interface SceneLine {
-  kind: 'line'
-  x1: number
-  y1: number
-  x2: number
-  y2: number
-  stroke: string
-  lineWidth: number
-}
-
 /** 三次贝塞尔：起点、两个控制点、终点。 */
 export interface SceneCurve {
   kind: 'curve'
@@ -69,7 +59,7 @@ export interface SceneText {
   halo?: string
 }
 
-export type SceneItem = SceneRect | SceneLine | SceneCurve | ScenePolygon | SceneText
+export type SceneItem = SceneRect | SceneCurve | ScenePolygon | SceneText
 
 export interface Scene {
   /** 内容坐标系的大小，与缩放无关；画布本身铺满视口。 */
@@ -81,13 +71,10 @@ export interface Scene {
 
 const nameSize = 13
 const smallSize = 11
-const bodySize = 10
 const nameRise = 8
 const kindDrop = 10
 const chevronInset = 12
 const chevronDrop = 14
-const bodyInset = 8
-const dividerInset = 6
 
 /**
  * 画什么由 payload 决定，画到哪一层细节由当前比例决定。
@@ -203,30 +190,5 @@ function nodeItems(
   ]
 
   if (density === 'name') items.splice(2, 1)
-  if (!node.expanded) return items
-
-  items.push({
-    kind: 'line',
-    x1: node.x + dividerInset,
-    y1: node.dividerY,
-    x2: node.x + node.width - dividerInset,
-    y2: node.dividerY,
-    stroke: palette.nodeStroke,
-    lineWidth: 1,
-  })
-  node.lines.forEach((text, index) => {
-    items.push({
-      kind: 'text',
-      x: node.x + bodyInset,
-      y: node.contentTop + index * payload.lineStep,
-      text,
-      size: bodySize,
-      color: palette.foreground,
-      align: 'start',
-      baseline: 'alphabetic',
-      halo: palette.background,
-    })
-  })
-
   return items
 }

@@ -120,24 +120,22 @@ test('面板数据：高亮的名字随参数带过去', () => {
   assert.equal(buildPreviewPayload(deploy, '站点巡检节点')?.highlight, '站点巡检节点')
 })
 
-test('面板数据：展开的节点撑高自己与后续层，正文全部落在框内', () => {
+test('面板数据：展开不撑高节点，坐标与画布高度一个不动', () => {
+  const folded = buildPreviewPayload(deploy)
   const payload = buildPreviewPayload(deploy, null, new Set(['上线安装节点']))
+  assert.ok(folded)
   assert.ok(payload)
 
-  const [first, second, third, fourth] = payload.nodes
-  assert.equal(first?.y, 24)
+  const second = payload.nodes[1]
   assert.equal(second?.expanded, true)
-  assert.ok(second!.height > 56)
-
-  // 层距仍按样式区的 gap（默认 48），只是从上一次的下边界开始算。
-  assert.equal(third?.y, second!.y + second!.height + 48)
-  assert.equal(fourth?.y, third!.y + third!.height + 48)
-
-  // 分隔线在头部下沿，正文最后一行仍在框内。
-  assert.ok(second!.dividerY > second!.y + 56)
-  assert.ok(second!.contentTop > second!.dividerY)
-  assert.ok(second!.contentTop + (second!.lines.length - 1) * payload.lineStep < second!.y + second!.height)
-  assert.equal(payload.height, fourth!.y + fourth!.height + 80)
+  assert.equal(second?.height, 56)
+  // 正文只随 payload 带给浮层，不参与排版
+  assert.ok((second?.lines.length ?? 0) > 3)
+  assert.deepEqual(
+    payload.nodes.map((node) => [node.x, node.y, node.width, node.height]),
+    folded.nodes.map((node) => [node.x, node.y, node.width, node.height]),
+  )
+  assert.equal(payload.height, folded.height)
 })
 
 test('面板数据：展开正文按框宽折行，每行不超过可用列数', () => {
@@ -249,4 +247,9 @@ test('面板 HTML 带 CSP、nonce 与脚本地址', () => {
   assert.match(html, /default-src 'none'/)
   assert.match(html, /script-src 'nonce-abc123'/)
   assert.match(html, /vscode-resource:\/\/x\/dist\/media\/preview\.js/)
+  // 画布、正文浮层、HUD、缺陷清单都在骨架里
+  assert.match(html, /<canvas id="graph">/)
+  assert.match(html, /<div id="bodies">/)
+  assert.match(html, /<div id="hud">/)
+  assert.match(html, /<div id="defects" hidden>/)
 })

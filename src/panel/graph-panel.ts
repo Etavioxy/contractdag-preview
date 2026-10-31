@@ -235,6 +235,7 @@ function toStateRecord(payload: unknown): Record<string, unknown> {
     devicePixelRatio: typeof source['devicePixelRatio'] === 'number' ? source['devicePixelRatio'] : -1,
     sceneItems: typeof source['sceneItems'] === 'number' ? source['sceneItems'] : -1,
     density: typeof source['density'] === 'string' ? source['density'] : '',
+    bodyCards: typeof source['bodyCards'] === 'number' ? source['bodyCards'] : -1,
   }
 }
 

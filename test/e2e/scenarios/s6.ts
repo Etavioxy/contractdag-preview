@@ -48,6 +48,7 @@ export async function run(context: ScenarioContext): Promise<void> {
   )
   context.check('展开后框里画出契约分区', expanded !== undefined)
   context.check('契约分区画出三行以上', Number(expanded?.['contractLines']) >= 3)
+  context.check('正文浮层真的出现在 DOM 层', Number(expanded?.['bodyCards']) === 1)
 
   const wheelSent = await vscode.commands.executeCommand<boolean>('contractdag.wheel', 0, 64)
   context.check('合成滚轮送进了 webview', wheelSent === true)
