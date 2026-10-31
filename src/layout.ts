@@ -38,6 +38,9 @@ export const layoutDefaults: Required<LayoutOptions> = {
   marginY: 24,
 }
 
+/** 一个产物标签占的高度：层间空隙按跨缝标签数增长，步长就用它。 */
+export const labelSpacing = 14
+
 export function layout(model: ContractModel, options: LayoutOptions = {}): LayoutResult {
   const settings = { ...layoutDefaults, ...options }
 
@@ -63,6 +66,20 @@ export function layout(model: ContractModel, options: LayoutOptions = {}): Layou
   const vertical = settings.direction === 'TB' || settings.direction === 'BT'
   const reversed = settings.direction === 'BT' || settings.direction === 'RL'
 
+  // 缝上要放几个标签：按「从这一层出发」统计，一条边只算它出发的那条缝。
+  const layerOf = new Map<string, number>()
+  layers.forEach((layer, index) => {
+    for (const name of layer) layerOf.set(name, index)
+  })
+  const labelsFrom = layers.map(() => 0)
+  for (const link of model.links) {
+    const from = layerOf.get(link.from)
+    if (from === undefined) continue
+    labelsFrom[from] = (labelsFrom[from] ?? 0) + link.artifacts.length
+  }
+  const gapOf = (layer: number): number =>
+    settings.gap + labelSpacing * Math.max(0, (labelsFrom[layer] ?? 0) - 1)
+
   // 节点尺寸统一：流动方向与交叉方向的长度都是常量，层距与格位只由 gap 与层内数量决定。
   const flowOf = (): number => (vertical ? settings.nodeHeight : settings.nodeWidth)
   const crossOf = (): number => (vertical ? settings.nodeWidth : settings.nodeHeight)
@@ -72,6 +89,9 @@ export function layout(model: ContractModel, options: LayoutOptions = {}): Layou
   const visualLayers = reversed ? [...layers].reverse() : layers
   const visualFlow = reversed ? [...flowExtent].reverse() : flowExtent
   const visualCross = reversed ? [...crossExtent].reverse() : crossExtent
+  // 缝 i 是第 i 层与第 i+1 层之间；反转方向时缝的顺序也一并反。
+  const gaps = Array.from({ length: Math.max(0, layers.length - 1) }, (_, index) => gapOf(index))
+  const visualGaps = reversed ? [...gaps].reverse() : gaps
 
   const widest = Math.max(
     ...visualLayers.map((layer, index) => layer.length * visualCross[index]! + (layer.length - 1) * settings.gapCross),
@@ -95,7 +115,7 @@ export function layout(model: ContractModel, options: LayoutOptions = {}): Layou
       )
     }
 
-    flow += visualFlow[layerIndex]! + settings.gap
+    flow += visualFlow[layerIndex]! + (visualGaps[layerIndex] ?? settings.gap)
   }
 
   return boxes
