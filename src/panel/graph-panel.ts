@@ -4,6 +4,7 @@ import { randomBytes } from 'node:crypto'
 import * as vscode from 'vscode'
 import { parse } from '../parser.ts'
 import type { Recorder } from '../records.ts'
+import { chevronHitBox } from './hit.ts'
 import { buildPreviewHtml } from './html.ts'
 import { buildPreviewPayload, type PreviewPayload } from './payload.ts'
 
@@ -93,11 +94,14 @@ export function hasPreview(document: vscode.TextDocument): boolean {
   return panels.has(document.uri.toString())
 }
 
-/** 剧本用的合成展开：让 webview 走它自己那条上报路，再由宿主重排。 */
+/** 剧本用的合成展开：给角标中心的内容坐标，webview 走同一条命中路径。 */
 export function requestExpand(document: vscode.TextDocument, name: string): boolean {
-  const panel = panels.get(document.uri.toString())
-  if (panel === undefined) return false
-  void panel.webview.postMessage({ type: 'expand', payload: { name } })
+  const payload = payloads.get(document.uri.toString())
+  if (payload === undefined) return false
+  const node = payload.nodes.find((entry) => entry.name === name)
+  if (node === undefined) return false
+  const point = { x: node.x + node.width - chevronHitBox.width / 2, y: node.y + chevronHitBox.height / 2 }
+  void panels.get(document.uri.toString())?.webview.postMessage({ type: 'clickAt', payload: point })
   return true
 }
 
@@ -109,11 +113,14 @@ export function requestWheel(document: vscode.TextDocument, dx: number, dy: numb
   return true
 }
 
-/** 剧本用的合成点击：让 webview 走它自己那条点击回报的路。 */
+/** 剧本用的合成点击：给框内一点的内容坐标，命中判定与手点同一条路。 */
 export function requestClick(document: vscode.TextDocument, name: string): boolean {
-  const panel = panels.get(document.uri.toString())
-  if (panel === undefined) return false
-  void panel.webview.postMessage({ type: 'click', payload: { name } })
+  const payload = payloads.get(document.uri.toString())
+  if (payload === undefined) return false
+  const node = payload.nodes.find((entry) => entry.name === name)
+  if (node === undefined) return false
+  const point = { x: node.x + node.width / 2, y: node.y + payload.headerHeight * 0.75 }
+  void panels.get(document.uri.toString())?.webview.postMessage({ type: 'clickAt', payload: point })
   return true
 }
 
@@ -213,7 +220,6 @@ function toStateRecord(payload: unknown): Record<string, unknown> {
     names,
     expanded,
     highlight: typeof source['highlight'] === 'string' ? source['highlight'] : null,
-    viewBox: typeof source['viewBox'] === 'string' ? source['viewBox'] : '',
     scale: typeof source['scale'] === 'number' ? source['scale'] : -1,
     scrollX: typeof source['scrollX'] === 'number' ? source['scrollX'] : -1,
     scrollY: typeof source['scrollY'] === 'number' ? source['scrollY'] : -1,
@@ -224,6 +230,11 @@ function toStateRecord(payload: unknown): Record<string, unknown> {
     viewportHeight: typeof source['viewportHeight'] === 'number' ? source['viewportHeight'] : -1,
     contentWidth: typeof source['contentWidth'] === 'number' ? source['contentWidth'] : -1,
     contentHeight: typeof source['contentHeight'] === 'number' ? source['contentHeight'] : -1,
+    canvasWidth: typeof source['canvasWidth'] === 'number' ? source['canvasWidth'] : -1,
+    canvasHeight: typeof source['canvasHeight'] === 'number' ? source['canvasHeight'] : -1,
+    devicePixelRatio: typeof source['devicePixelRatio'] === 'number' ? source['devicePixelRatio'] : -1,
+    sceneItems: typeof source['sceneItems'] === 'number' ? source['sceneItems'] : -1,
+    density: typeof source['density'] === 'string' ? source['density'] : '',
   }
 }
 

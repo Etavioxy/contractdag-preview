@@ -1,12 +1,13 @@
-/** webview 侧的渲染脚本：画图、管理视口（缩放与拖动，带阻尼）、把点击与状态回报给面板。 */
+/** webview 侧的脚本：把图元画到画布、管相机（缩放与拖动）、把命中与状态回报给面板。 */
 
+import { beginPointer, isDrag, movePointer, type PointerTrack } from '../src/panel/gesture.ts'
+import { hitTest } from '../src/panel/hit.ts'
 import type { PreviewPayload } from '../src/panel/payload.ts'
-import { beginPointer, isClick, isDrag, movePointer, type PointerTrack } from '../src/panel/gesture.ts'
+import { buildScene, type Scene } from '../src/panel/scene.ts'
 import {
   anchorScroll,
   approach,
   clampScroll,
-  densityOf,
   finiteOffset,
   fitScale,
   isSettled,
@@ -14,50 +15,42 @@ import {
   scaleEpsilon,
   scaledSize,
   stepScale,
+  type Point,
+  type ViewTransform,
 } from '../src/panel/viewport.ts'
+import { createRenderer, readPalette } from './renderer.ts'
 
 declare function acquireVsCodeApi(): { postMessage(message: unknown): void }
 
 const vscode = acquireVsCodeApi()
-const namespace = 'http://www.w3.org/2000/svg'
 
 interface ZoomRun {
   fromScale: number
   toScale: number
-  fromScroll: { x: number; y: number }
-  toScroll: { x: number; y: number }
+  fromScroll: Point
+  toScroll: Point
 }
 
 let current: PreviewPayload | null = null
-let highlighted: string | null = null
+let scene: Scene | null = null
 let firstRender = true
 
 let scale = 1
-let scroll = { x: 0, y: 0 }
+let scroll: Point = { x: 0, y: 0 }
 let zoom: ZoomRun | null = null
 let frame = 0
 let reportTimer = 0
 /** 滚轮到底进没进来、进来的是哪个轴：位移不动时靠这三个数字分辨是没事件还是被钳住。 */
 const wheelStats = { count: 0, deltaX: 0, deltaY: 0 }
 let drag: { pointerId: number; track: PointerTrack; scrollX: number; scrollY: number } | null = null
-/** 拖动结束会跟一个 click；这个标记让那次 click 不跳编辑器。 */
-let suppressClick = false
 
 const viewport = document.getElementById('viewport') as HTMLElement
-const graph = document.getElementById('graph') as unknown as SVGSVGElement
+const canvas = document.getElementById('graph') as HTMLCanvasElement
 const stale = document.getElementById('stale') as HTMLElement
+const renderer = createRenderer(canvas)
 
 function post(message: unknown): void {
   vscode.postMessage(message)
-}
-
-function element<K extends keyof SVGElementTagNameMap>(
-  name: K,
-  attributes: Record<string, string | number>,
-): SVGElementTagNameMap[K] {
-  const created = document.createElementNS(namespace, name)
-  for (const [key, value] of Object.entries(attributes)) created.setAttribute(key, String(value))
-  return created
 }
 
 function contentSize(): { width: number; height: number } {
@@ -68,91 +61,13 @@ function viewportSize(): { width: number; height: number } {
   return { width: viewport.clientWidth, height: viewport.clientHeight }
 }
 
+function camera(): ViewTransform {
+  return { scale, scrollX: scroll.x, scrollY: scroll.y }
+}
+
 function render(payload: PreviewPayload): void {
   current = payload
-  highlighted = payload.highlight
   stale.hidden = true
-  graph.setAttribute('viewBox', `0 0 ${payload.width} ${payload.height}`)
-  graph.style.fontFamily = payload.font
-  graph.replaceChildren()
-
-  const edges = element('g', { class: 'edges' })
-  for (const edge of payload.edges) {
-    const group = element('g', { class: 'edge' })
-    const line = element('path', { d: edge.path, fill: 'none' })
-    const arrow = element('polygon', {
-      points: `${edge.arrow.tipX},${edge.arrow.tipY} ${edge.arrow.leftX},${edge.arrow.leftY} ${edge.arrow.rightX},${edge.arrow.rightY}`,
-    })
-    if (edge.stroke !== undefined) {
-      line.setAttribute('stroke', edge.stroke)
-      arrow.setAttribute('fill', edge.stroke)
-    }
-    group.append(line, arrow)
-    for (const label of edge.labels) {
-      const text = element('text', { x: label.x, y: label.y })
-      text.textContent = label.text
-      group.append(text)
-    }
-    edges.append(group)
-  }
-  graph.append(edges)
-
-  for (const node of payload.nodes) {
-    const group = element('g', { class: node.name === highlighted ? 'node highlight' : 'node', 'data-name': node.name })
-    const rect = element('rect', { x: node.x, y: node.y, width: node.width, height: node.height, rx: 6 })
-    if (node.fill !== undefined) rect.setAttribute('fill', node.fill)
-    if (node.stroke !== undefined) rect.setAttribute('stroke', node.stroke)
-
-    const name = element('text', {
-      x: node.x + node.width / 2,
-      y: node.y + payload.headerHeight / 2 - 8,
-      'text-anchor': 'middle',
-    })
-    name.textContent = node.name
-    const kind = element('text', {
-      class: 'kind',
-      x: node.x + node.width / 2,
-      y: node.y + payload.headerHeight / 2 + 10,
-      'text-anchor': 'middle',
-    })
-    kind.textContent = node.kind
-
-    const chevron = element('text', { class: 'chevron', x: node.x + node.width - 12, y: node.y + 14, 'text-anchor': 'middle' })
-    chevron.textContent = node.expanded ? '▾' : '▸'
-    chevron.addEventListener('click', (event) => {
-      event.stopPropagation()
-      post({ type: 'expand', payload: { name: node.name } })
-    })
-
-    group.append(rect, name, kind, chevron)
-
-    if (node.expanded) {
-      const divider = element('line', {
-        class: 'divider',
-        x1: node.x + 6,
-        y1: node.dividerY,
-        x2: node.x + node.width - 6,
-        y2: node.dividerY,
-      })
-      group.append(divider)
-      const body = element('g', { class: 'contract', 'data-name': node.name })
-      node.lines.forEach((text, index) => {
-        const line = element('text', { x: node.x + 8, y: node.contentTop + index * payload.lineStep })
-        line.textContent = text
-        body.append(line)
-      })
-      group.append(body)
-    }
-
-    group.addEventListener('click', () => {
-      if (suppressClick) {
-        suppressClick = false
-        return
-      }
-      post({ type: 'reveal', payload: { name: node.name } })
-    })
-    graph.append(group)
-  }
 
   if (firstRender) {
     firstRender = false
@@ -166,19 +81,19 @@ function render(payload: PreviewPayload): void {
   postState()
 }
 
-/** 比例决定元素的像素尺寸，平移用 transform：viewBox 恒为内容坐标系，坐标不受缩放与平移影响。 */
+/** 相机整个交给变换矩阵：图元是内容坐标，缩放与平移不改一份图。 */
 function applyView(): void {
   if (current === null) return
   if (!finiteOffset(scroll) || !Number.isFinite(scale)) {
-    // 不静默写出 NaN：transform 里出现 NaN 时浏览器整条声明作废，画面会完全不动。
-    vscode.postMessage({ type: 'probe', payload: { kind: 'non-finite', scrollX: String(scroll.x), scrollY: String(scroll.y) } })
+    // 不静默画错：非有限数会让整幅变换失效，先复位再回报。
+    post({ type: 'probe', payload: { kind: 'non-finite', scrollX: String(scroll.x), scrollY: String(scroll.y) } })
     scroll = { x: 0, y: 0 }
   }
-  const size = scaledSize(contentSize(), scale)
-  graph.style.width = `${size.width}px`
-  graph.style.height = `${size.height}px`
-  graph.style.transform = `translate(${-scroll.x}px, ${-scroll.y}px)`
-  graph.setAttribute('data-density', densityOf(scale))
+
+  renderer.resize(viewportSize(), window.devicePixelRatio)
+  scene = buildScene(current, camera(), readPalette(document.body))
+  renderer.draw(scene, camera(), current.font)
+  canvas.dataset['density'] = scene.density
 }
 
 function start(): void {
@@ -211,21 +126,37 @@ function tick(): void {
   else postState()
 }
 
-function requestZoom(nextScale: number, anchor: { x: number; y: number }): void {
+function requestZoom(nextScale: number, anchor: Point): void {
   const target = anchorScroll({ scale, scrollX: scroll.x, scrollY: scroll.y }, nextScale, anchor)
   zoom = { fromScale: scale, toScale: nextScale, fromScroll: { ...scroll }, toScroll: target }
   start()
 }
 
-function anchorAtCenter(): { x: number; y: number } {
+function anchorAtCenter(): Point {
   return { x: viewport.clientWidth / 2, y: viewport.clientHeight / 2 }
 }
 
-function applyHighlight(name: string | null): void {
-  highlighted = name
-  for (const group of graph.querySelectorAll('g.node')) {
-    group.classList.toggle('highlight', group.getAttribute('data-name') === name)
+/** 指针位置换算成内容坐标：命中判定只需要内容坐标，与相机无关。 */
+function contentPoint(clientX: number, clientY: number): Point {
+  const rect = viewport.getBoundingClientRect()
+  return { x: (clientX - rect.left + scroll.x) / scale, y: (clientY - rect.top + scroll.y) / scale }
+}
+
+/** 命中之后只做两件事：角标切展开，框把光标带回声明行。 */
+function handleHit(point: Point): void {
+  if (current === null) return
+  const hit = hitTest(current, point)
+  if (hit === null) {
+    post({ type: 'probe', payload: { kind: 'hit-miss', x: String(Math.round(point.x)), y: String(Math.round(point.y)) } })
+    return
   }
+  post({ type: hit.kind === 'chevron' ? 'expand' : 'reveal', payload: { name: hit.name } })
+}
+
+function applyHighlight(name: string | null): void {
+  if (current === null) return
+  current = { ...current, highlight: name }
+  applyView()
   postState()
 }
 
@@ -240,8 +171,7 @@ function postState(): void {
       nodes: current?.nodes.length ?? 0,
       edges: current?.edges.length ?? 0,
       names: current?.nodes.map((node) => node.name) ?? [],
-      highlight: highlighted,
-      viewBox: graph.getAttribute('viewBox') ?? '',
+      highlight: current?.highlight ?? null,
       contractLines,
       expanded,
       scale: Math.round(scale * 100),
@@ -254,6 +184,11 @@ function postState(): void {
       viewportHeight: Math.round(viewportSize().height),
       contentWidth: Math.round(current?.width ?? 0),
       contentHeight: Math.round(current?.height ?? 0),
+      canvasWidth: canvas.width,
+      canvasHeight: canvas.height,
+      devicePixelRatio: window.devicePixelRatio,
+      sceneItems: scene?.items.length ?? 0,
+      density: scene?.density ?? '',
     },
   })
 }
@@ -305,14 +240,13 @@ viewport.addEventListener(
 
 viewport.addEventListener('pointerdown', (event: PointerEvent) => {
   if (event.button !== 0) return
-  suppressClick = false
   drag = {
     pointerId: event.pointerId,
     track: beginPointer(event.clientX, event.clientY),
     scrollX: scroll.x,
     scrollY: scroll.y,
   }
-  // 这里不设指针捕获：一旦在按下时就捕获，随后的 click 会派发给视口，节点的点击永远收不到。
+  // 这里不设指针捕获：一旦在按下时就捕获，单击之后的 pointerup 会跑偏，命中判定拿不到原位点。
 })
 
 viewport.addEventListener('pointermove', (event: PointerEvent) => {
@@ -336,13 +270,16 @@ viewport.addEventListener('pointermove', (event: PointerEvent) => {
 function endDrag(event: PointerEvent): void {
   if (drag === null || event.pointerId !== drag.pointerId) return
   if (viewport.hasPointerCapture(event.pointerId)) viewport.releasePointerCapture(event.pointerId)
-  if (isDrag(drag.track)) {
-    suppressClick = true
-    scheduleReport()
-  } else {
-    post({ type: 'probe', payload: { kind: 'click-gesture', scrollX: '', scrollY: '' } })
-  }
+
+  // 单击与拖动的分界沿用 gesture 的口径：没过阈值才算点，点才做命中。
+  const wasClick = !isDrag(drag.track)
   drag = null
+  if (wasClick) {
+    post({ type: 'probe', payload: { kind: 'click-gesture', scrollX: '', scrollY: '' } })
+    handleHit(contentPoint(event.clientX, event.clientY))
+  } else {
+    scheduleReport()
+  }
 }
 
 viewport.addEventListener('pointerup', endDrag)
@@ -366,6 +303,13 @@ document.getElementById('zoom-fit')?.addEventListener('click', () => {
   start()
 })
 
+window.addEventListener('resize', () => {
+  zoom = null
+  scroll = clampScroll(scroll, viewportSize(), scaledSize(contentSize(), scale))
+  applyView()
+  scheduleReport()
+})
+
 window.addEventListener('message', (event: MessageEvent) => {
   const message = event.data as { type: string; payload?: unknown }
   switch (message.type) {
@@ -378,13 +322,12 @@ window.addEventListener('message', (event: MessageEvent) => {
     case 'stale':
       showStale((message.payload as { messages: string[] }).messages)
       break
-    case 'click':
-      post({ type: 'reveal', payload: { name: (message.payload as { name: string }).name } })
+    case 'clickAt': {
+      // 剧本用的合成点击：给的是内容坐标，走的仍是同一条命中路径。
+      const point = message.payload as Point
+      handleHit(point)
       break
-    case 'expand':
-      // 展开要重排，由宿主算新坐标后整份重发。
-      post({ type: 'expand', payload: { name: (message.payload as { name: string }).name } })
-      break
+    }
     case 'wheel': {
       // 剧本用的合成立方位移：和真实滚轮走同一个入口，只是不经过 DOM 监听器。
       const { dx, dy } = message.payload as { dx: number; dy: number }
