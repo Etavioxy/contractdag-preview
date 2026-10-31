@@ -42,3 +42,13 @@ test('命中：落在两个框之间的空白处回 null，不误判给相邻节
   const between = (80 + 128) / 2
   assert.equal(hitTest(payload, { x: 160, y: between }), null)
 })
+
+test('命中：角标下沿仍归角标，左沿外归节点', () => {
+  // 源码构建节点 x∈[80,240]，角标区 x∈[216,240]、y∈[24,52]
+  assert.deepEqual(hitTest(payload, { x: 220, y: 52 }), { kind: 'chevron', name: '源码构建节点' })
+  assert.deepEqual(hitTest(payload, { x: 215.5, y: 40 }), { kind: 'node', name: '源码构建节点' })
+})
+
+test('命中：产物标签不算可点对象，点在标签上回 null', () => {
+  assert.equal(hitTest(payload, { x: 160, y: 98 }), null)
+})

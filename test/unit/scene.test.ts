@@ -18,6 +18,8 @@ const palette: ScenePalette = {
   highlight: '#4a9eff',
   edge: '#666',
   background: '#1e1e1e',
+  error: '#f14c4c',
+  muted: '#777',
 }
 
 function sceneOf(source: ReturnType<typeof parse>, expanded: ReadonlySet<string> = new Set()): Scene {
@@ -163,4 +165,77 @@ test('图元表：展开只换角标，框与边一个不动，正文不进画�
     chevron.filter((text) => text.text === '▾').map((text) => [text.x, text.y]),
     [[228, 142]],
   )
+})
+
+test('图元表：缺陷标在图上——环边标红、断头转灰、缺 path 与重名带角标', () => {
+  const cycleScene = sceneOf(parse(readFileSync(join(fixtures, 'defect-cycle.contractdag'), 'utf8')))
+  const curves = cycleScene.items.filter(
+    (item): item is Extract<SceneItem, { kind: 'curve' }> => item.kind === 'curve',
+  )
+  assert.equal(curves.length, 2)
+  assert.deepEqual(curves.map((curve) => curve.stroke), ['#f14c4c', '#f14c4c'])
+
+  const dangling = parse(readFileSync(join(fixtures, 'defect-dangling.contractdag'), 'utf8'))
+  const danglingPayload = buildPreviewPayload(dangling)
+  assert.ok(danglingPayload)
+  const dead = danglingPayload.nodes.find((node) => node.name === '丙')
+  assert.ok(dead)
+  const deadBox = sceneOf(dangling).items.find(
+    (item): item is Extract<SceneItem, { kind: 'rect' }> =>
+      item.kind === 'rect' && item.x === dead.x && item.y === dead.y,
+  )
+  assert.equal(deadBox?.stroke, '#777')
+
+  const missingScene = sceneOf(parse(readFileSync(join(fixtures, 'defect-missing-path.contractdag'), 'utf8')))
+  const missingBadges = missingScene.items.filter(
+    (item): item is Extract<SceneItem, { kind: 'badge' }> => item.kind === 'badge',
+  )
+  assert.equal(missingBadges.length, 1)
+  assert.deepEqual([missingBadges[0]?.x, missingBadges[0]?.y], [90, 34])
+
+  const duplicateScene = sceneOf(parse(readFileSync(join(fixtures, 'defect-duplicate-artifact.contractdag'), 'utf8')))
+  const duplicateBadges = duplicateScene.items.filter(
+    (item): item is Extract<SceneItem, { kind: 'badge' }> => item.kind === 'badge',
+  )
+  assert.equal(duplicateBadges.length, 1)
+})
+
+test('图元表：低比例下缺陷角标照画，不随字一起收', () => {
+  const payload = buildPreviewPayload(parse(readFileSync(join(fixtures, 'defect-missing-path.contractdag'), 'utf8')))
+  assert.ok(payload)
+  const scene = buildScene(payload, { scale: 0.5, scrollX: 0, scrollY: 0 }, palette)
+
+  assert.equal(scene.density, 'name')
+  assert.equal(scene.items.filter((item) => item.kind === 'badge').length, 1)
+})
+
+test('图元表：多产物的标签沿弧线依次排开', () => {
+  const source = [
+    '<nodes>',
+    '[甲:change]',
+    'path = /a',
+    'destination = 做完。',
+    '',
+    '[乙:root]',
+    'destination = 收尾。',
+    '</nodes>',
+    '',
+    '<links>',
+    '[[甲 -> 乙]]',
+    'artifact = [',
+    '  a.tar',
+    '  a.log',
+    '  a.map',
+    ']',
+    '</links>',
+  ].join('\n')
+
+  const scene = sceneOf(parse(source))
+  const labels = scene.items.filter(
+    (item): item is Extract<SceneItem, { kind: 'text' }> =>
+      item.kind === 'text' && ['a.tar', 'a.log', 'a.map'].includes(item.text),
+  )
+  assert.equal(labels.length, 3)
+  const ys = labels.map((label) => label.y)
+  assert.ok(ys[0]! < ys[1]! && ys[1]! < ys[2]!)
 })

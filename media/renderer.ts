@@ -88,6 +88,18 @@ function paint(context: CanvasRenderingContext2D, item: SceneItem, family: strin
       context.fill()
       return
     }
+    case 'badge': {
+      context.beginPath()
+      context.arc(item.x, item.y, item.radius, 0, Math.PI * 2)
+      context.fillStyle = item.fill
+      context.fill()
+      context.font = fontOf(item.size, family)
+      context.textAlign = 'center'
+      context.textBaseline = 'middle'
+      context.fillStyle = item.color
+      context.fillText(item.text, item.x, item.y)
+      return
+    }
     case 'text': {
       context.font = fontOf(item.size, family)
       context.textAlign = alignOf(item.align)
@@ -132,6 +144,8 @@ export function readPalette(root: HTMLElement): ScenePalette {
     highlight: read('--vscode-focusBorder', '#4a9eff'),
     edge: read('--vscode-editorLineNumber-foreground', '#666666'),
     background: read('--vscode-editor-background', '#1e1e1e'),
+    error: read('--vscode-errorForeground', '#f14c4c'),
+    muted: read('--vscode-disabledForeground', '#777777'),
   }
 }
 

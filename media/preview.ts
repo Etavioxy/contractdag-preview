@@ -20,7 +20,7 @@ import {
 } from '../src/panel/viewport.ts'
 import { createRenderer, readPalette } from './renderer.ts'
 import { createBodyLayer } from './ui/body-layer.ts'
-import { createHud } from './ui/hud.ts'
+import { createDefectList, createHud } from './ui/hud.ts'
 
 declare function acquireVsCodeApi(): { postMessage(message: unknown): void }
 
@@ -52,6 +52,7 @@ const stale = document.getElementById('stale') as HTMLElement
 const renderer = createRenderer(canvas)
 const bodies = createBodyLayer(document.getElementById('bodies') as HTMLElement)
 const hud = createHud(document.getElementById('hud') as HTMLElement)
+const defects = createDefectList(document.getElementById('defects') as HTMLElement)
 
 function post(message: unknown): void {
   vscode.postMessage(message)
@@ -72,6 +73,8 @@ function camera(): ViewTransform {
 function render(payload: PreviewPayload): void {
   current = payload
   stale.hidden = true
+  // 图照画，缺陷另走清单：撤图会让读者连拓扑都看不到。
+  defects.set(payload.diagnostics)
 
   if (firstRender) {
     firstRender = false

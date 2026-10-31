@@ -206,7 +206,7 @@ test('面板数据：竖直边的箭头仍沿轴，几何与轴对齐时一致',
   assert.ok(Math.abs(edge.arrow.rightX - 164) < 1e-6)
 })
 
-test('有结构缺陷时不产出新图', () => {
+test('有结构缺陷照常出图，缺陷落在对应的边上', () => {
   const broken = parse(
     [
       '<nodes>',
@@ -230,11 +230,37 @@ test('有结构缺陷时不产出新图', () => {
 
   assert.ok(broken.model)
   assert.ok(broken.diagnostics.length > 0)
-  assert.equal(buildPreviewPayload(broken), undefined)
+  const payload = buildPreviewPayload(broken)
+  assert.ok(payload)
+  assert.equal(payload.edges.length, 2)
+  assert.deepEqual(payload.edges.map((edge) => edge.defects), [[], ['duplicate-artifact']])
+  assert.equal(payload.diagnostics.length, 1)
+  assert.equal(payload.diagnostics[0]?.layer, 'structural')
+})
+
+test('结构缺陷不再撤图：环、断头、缺 path 都照常出图并带标记', () => {
+  const cycle = buildPreviewPayload(parse(readFileSync(join(fixtures, 'defect-cycle.contractdag'), 'utf8')))
+  assert.ok(cycle)
+  assert.deepEqual(cycle.edges.map((edge) => edge.defects), [['cycle'], ['cycle']])
+
+  const dangling = buildPreviewPayload(parse(readFileSync(join(fixtures, 'defect-dangling.contractdag'), 'utf8')))
+  assert.ok(dangling)
+  assert.deepEqual(dangling.nodes.find((node) => node.name === '丙')?.defects, ['dangling-node'])
+
+  const missing = buildPreviewPayload(parse(readFileSync(join(fixtures, 'defect-missing-path.contractdag'), 'utf8')))
+  assert.ok(missing)
+  assert.deepEqual(missing.nodes.find((node) => node.name === '甲')?.defects, ['missing-path'])
 })
 
 test('文法错误时不产出新图', () => {
   assert.equal(buildPreviewPayload(parse('<node>\n</node>')), undefined)
+})
+
+test('结构缺陷时画布尺寸照算，不因缺陷缩成 0', () => {
+  const payload = buildPreviewPayload(parse(readFileSync(join(fixtures, 'defect-cycle.contractdag'), 'utf8')))
+  assert.ok(payload)
+  assert.ok(payload.width > 0 && payload.height > 0)
+  assert.equal(payload.height, Math.max(...payload.nodes.map((node) => node.y + node.height)) + 80)
 })
 
 test('面板 HTML 带 CSP、nonce 与脚本地址', () => {

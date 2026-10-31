@@ -12,6 +12,10 @@ export interface ScenePalette {
   highlight: string
   edge: string
   background: string
+  /** 结构缺陷的标记色。 */
+  error: string
+  /** 断头节点：结构上还在，产物交不出去。 */
+  muted: string
 }
 
 export type SceneAlign = 'start' | 'middle' | 'end'
@@ -46,6 +50,18 @@ export interface ScenePolygon {
   fill: string
 }
 
+/** 缺陷角标：一个圆底加一个惊叹号，画在节点左上角或产物标签旁边。 */
+export interface SceneBadge {
+  kind: 'badge'
+  x: number
+  y: number
+  radius: number
+  fill: string
+  text: string
+  color: string
+  size: number
+}
+
 export interface SceneText {
   kind: 'text'
   x: number
@@ -59,7 +75,7 @@ export interface SceneText {
   halo?: string
 }
 
-export type SceneItem = SceneRect | SceneCurve | ScenePolygon | SceneText
+export type SceneItem = SceneRect | SceneCurve | ScenePolygon | SceneBadge | SceneText
 
 export interface Scene {
   /** 内容坐标系的大小，与缩放无关；画布本身铺满视口。 */
@@ -99,7 +115,8 @@ export function buildScene(
 }
 
 function edgeItems(edge: PreviewEdge, density: Density, palette: ScenePalette): SceneItem[] {
-  const stroke = edge.stroke ?? palette.edge
+  // 环上的边整条标红：形状还在，方向走不通。
+  const stroke = edge.defects.includes('cycle') ? palette.error : (edge.stroke ?? palette.edge)
   const items: SceneItem[] = [
     {
       kind: 'curve',
@@ -129,13 +146,24 @@ function edgeItems(edge: PreviewEdge, density: Density, palette: ScenePalette): 
       y: label.y,
       text: label.text,
       size: smallSize,
-      color: palette.description,
+      color: edge.defects.length > 0 ? palette.error : palette.description,
       align: 'middle',
       baseline: 'alphabetic',
       halo: palette.background,
     })
   }
+
+  // 产物重名：角标贴在第一个产物标签的右上角。
+  const first = edge.labels[0]
+  if (edge.defects.includes('duplicate-artifact') && first !== undefined) {
+    items.push(badge(first.x + smallSize, first.y - 6, palette))
+  }
+
   return items
+}
+
+export function badge(x: number, y: number, palette: ScenePalette): SceneBadge {
+  return { kind: 'badge', x, y, radius: 6, fill: palette.error, text: '!', color: palette.background, size: 10 }
 }
 
 function nodeItems(
@@ -145,6 +173,9 @@ function nodeItems(
   palette: ScenePalette,
 ): SceneItem[] {
   const highlighted = node.name === payload.highlight
+  // 断头节点：产物交不出去，框走灰；高亮优先于缺陷，好让回跳看得见落点。
+  const dangling = node.defects.includes('dangling-node')
+  const stroke = highlighted ? palette.highlight : dangling ? palette.muted : (node.stroke ?? palette.nodeStroke)
   const items: SceneItem[] = [
     {
       kind: 'rect',
@@ -154,7 +185,7 @@ function nodeItems(
       height: node.height,
       radius: 6,
       fill: node.fill ?? palette.nodeFill,
-      stroke: highlighted ? palette.highlight : (node.stroke ?? palette.nodeStroke),
+      stroke,
       lineWidth: highlighted ? 3 : 1.5,
     },
     {
@@ -190,5 +221,7 @@ function nodeItems(
   ]
 
   if (density === 'name') items.splice(2, 1)
+  // 变更节点缺 path：角标钉在左上角，不挡名字与角标。
+  if (node.defects.includes('missing-path')) items.push(badge(node.x + 10, node.y + 10, palette))
   return items
 }

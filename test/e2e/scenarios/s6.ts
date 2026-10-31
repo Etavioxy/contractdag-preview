@@ -61,4 +61,18 @@ export async function run(context: ScenarioContext): Promise<void> {
     '位移回报的是数字不是兜底值',
     typeof scrolled?.['scrollX'] === 'number' && typeof scrolled?.['scrollY'] === 'number',
   )
+
+  // 加一条回边把图接成环：结构缺陷不再撤图，四边照画。
+  const cyclic = document
+    .getText()
+    .split('</links>')
+    .join('[[流水线收尾 -> 源码构建节点]]\nartifact = 回流\n</links>')
+  const cycleEdit = new vscode.WorkspaceEdit()
+  cycleEdit.replace(document.uri, new vscode.Range(document.positionAt(0), document.positionAt(document.getText().length)), cyclic)
+  await vscode.workspace.applyEdit(cycleEdit)
+  const withCycle = await context.waitForRecord(
+    (record) => record['event'] === 'preview-state' && record['edges'] === 4,
+    2_000,
+  )
+  context.check('结构缺陷不撤图：成环后仍报出四条边', withCycle !== undefined)
 }

@@ -1,7 +1,7 @@
 /** 面板要的数据：节点框、边的两端与标签位置、画布尺寸。纯计算，不碰 VSCode。 */
 
 import { layout, layoutDefaults } from '../layout.ts'
-import type { NodeKind } from '../model.ts'
+import type { Diagnostic, NodeKind } from '../model.ts'
 import type { Analysis } from '../parser.ts'
 import type { Point } from './viewport.ts'
 
@@ -26,6 +26,8 @@ export interface PreviewNode {
   lines: string[]
   path: string[]
   destination: string[]
+  /** 落在本节点上的结构缺陷码，渲染侧据此改描边或加角标。 */
+  defects: string[]
   fill?: string
   stroke?: string
 }
@@ -64,6 +66,8 @@ export interface PreviewEdge {
   path: string
   labels: PreviewLabel[]
   arrow: PreviewArrow
+  /** 落在本连线上的结构缺陷码。 */
+  defects: string[]
   stroke?: string
 }
 
@@ -76,6 +80,8 @@ export interface PreviewPayload {
   highlight: string | null
   /** 折叠态高度：名字与种类画在这个高度里。 */
   headerHeight: number
+  /** 结构缺陷原文：图里标一遍，清单里再列一遍。 */
+  diagnostics: Diagnostic[]
 }
 
 const canvasMargin = 80
@@ -88,14 +94,26 @@ const header = layoutDefaults.nodeHeight
 /** 浮层里正文的折行宽度，以半角列计：浮层的可用宽度比框宽，仍按列折，不依赖字体度量。 */
 const contentColumns = 26
 
-/** 文法错或有结构缺陷时不产出新图：调用方保留上一张。 */
+/** 诊断按起点行列对上节点或连线：两条记录同起点即同一条语法构件。 */
+function rangeKey(startLine: number, startCharacter: number): string {
+  return `${startLine}:${startCharacter}`
+}
+
+/** 文法错到没有模型时才不产出新图：结构缺陷照样画出来，就地标记。 */
 export function buildPreviewPayload(
   analysis: Analysis,
   highlight: string | null = null,
   expanded: ReadonlySet<string> = new Set(),
 ): PreviewPayload | undefined {
   const model = analysis.model
-  if (model === undefined || analysis.diagnostics.length > 0) return undefined
+  if (model === undefined) return undefined
+
+  const structural = analysis.diagnostics.filter((diagnostic) => diagnostic.layer === 'structural')
+  const defectsOf = new Map<string, string[]>()
+  for (const diagnostic of structural) {
+    const key = rangeKey(diagnostic.range.startLine, diagnostic.range.startCharacter)
+    defectsOf.set(key, [...(defectsOf.get(key) ?? []), diagnostic.code])
+  }
 
   const style = analysis.style
   const vertical = style.direction === 'TB' || style.direction === 'BT'
@@ -129,6 +147,7 @@ export function buildPreviewPayload(
       lines: linesOf.get(node.name) ?? [],
       path: node.path,
       destination: node.destination,
+      defects: defectsOf.get(rangeKey(node.range.startLine, node.range.startCharacter)) ?? [],
       fill: properties['fill'],
       stroke: properties['stroke'],
     })
@@ -161,6 +180,7 @@ export function buildPreviewPayload(
       path: `M ${start.x},${start.y} C ${curve.c1.x},${curve.c1.y} ${curve.c2.x},${curve.c2.y} ${arrow.baseX},${arrow.baseY}`,
       labels: labelsAlong(curve, link.artifacts),
       arrow,
+      defects: defectsOf.get(rangeKey(link.range.startLine, link.range.startCharacter)) ?? [],
       stroke: linkStyle?.properties['stroke'],
     })
   }
@@ -176,6 +196,7 @@ export function buildPreviewPayload(
     font: style.font ?? 'sans-serif',
     highlight,
     headerHeight: header,
+    diagnostics: structural,
   }
 }
 
