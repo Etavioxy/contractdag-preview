@@ -23,7 +23,7 @@ export function buildPreviewHtml(options: PreviewHtmlOptions): string {
   .node { cursor: pointer; }
   .node text { fill: var(--vscode-editor-foreground); font-size: 13px; dominant-baseline: middle; }
   .node .kind { fill: var(--vscode-descriptionForeground, #999); font-size: 11px; }
-  .edge line { stroke: var(--vscode-editorLineNumber-foreground, #666); stroke-width: 1.5; }
+  .edge path { stroke: var(--vscode-editorLineNumber-foreground, #666); stroke-width: 1.5; fill: none; }
   .edge polygon { fill: var(--vscode-editorLineNumber-foreground, #666); stroke: none; }
   .edge text { fill: var(--vscode-descriptionForeground, #999); font-size: 11px; text-anchor: middle; paint-order: stroke; stroke: var(--vscode-editor-background, #1e1e1e); stroke-width: 4px; stroke-linejoin: round; }
   .chevron { fill: var(--vscode-descriptionForeground, #999); font-size: 11px; cursor: pointer; }

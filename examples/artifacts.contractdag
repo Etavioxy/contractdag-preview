@@ -37,24 +37,48 @@ destination = 发布结束：清单里每一行都能在镜像点取到，且摘
 <links>
 
 [[拉取 -> 构建]]
-artifact = source-snapshot
+artifact = [
+  source-snapshot
+  vendor-lock
+  patch-set
+]
 
 [[拉取 -> 测试]]
-artifact = source-for-test
+artifact = [
+  source-for-test
+  lock-for-test
+]
 
 [[构建 -> 打包]]
-artifact = build-output
+artifact = [
+  build-output
+  build-log
+  symbol-map
+  sbom.json
+]
 
 [[测试 -> 打包]]
-artifact = test-report
+artifact = [
+  test-report
+  coverage.xml
+]
 
 [[打包 -> 签名]]
-artifact = package-set
+artifact = [
+  package-set
+  checksums.txt
+]
 
 [[签名 -> 分发]]
-artifact = signed-manifest
+artifact = [
+  signed-manifest
+  public-key
+]
 
 [[分发 -> 收尾]]
-artifact = mirror-index
+artifact = [
+  mirror-index
+  cdn-report
+]
 
 </links>

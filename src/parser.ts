@@ -176,7 +176,7 @@ function readLinks(lines: string[], from: number, out: DependencyEdge[]): number
       throw fail(head.code, head.message, range)
     }
 
-    const body = readEntries(lines, cursor + 1, { allowBlockValues: false })
+    const body = readEntries(lines, cursor + 1, { allowBlockValues: true })
     out.push(buildLink(head.value, range, body.entries))
     cursor = body.next
   }
@@ -250,6 +250,7 @@ function buildNode(head: syntax.NodeHead, range: SourceRange, entries: Entry[]):
 }
 
 function buildLink(head: syntax.LinkHead, range: SourceRange, entries: Entry[]): DependencyEdge {
+  const artifacts: string[] = []
   const properties: Record<string, string> = {}
   const keyRanges: Record<string, SourceRange> = {}
 
@@ -257,14 +258,23 @@ function buildLink(head: syntax.LinkHead, range: SourceRange, entries: Entry[]):
     if (entry.key === 'from' || entry.key === 'to') {
       throw fail('reserved-key', `连线区不认 ${entry.key}：端点已经写在表头里`, entry.keyRange)
     }
+    if (entry.key === 'artifact') {
+      artifacts.push(...entry.values.filter((value) => value !== ''))
+      keyRanges[entry.key] = entry.keyRange
+      continue
+    }
+    // 只有 artifact 可以写成多行：其余键机器忽略，多行没有意义。
+    if (entry.values.length > 1) {
+      throw fail('bad-value', `只有 artifact 可以写多行，${entry.key} 只能单行`, entry.keyRange)
+    }
     properties[entry.key] = entry.values[0] ?? ''
     keyRanges[entry.key] = entry.keyRange
   }
-  if (properties['artifact'] === undefined) {
+  if (artifacts.length === 0) {
     throw fail('missing-artifact', `连线 ${head.from} -> ${head.to} 没写 artifact`, range)
   }
 
-  return { from: head.from, to: head.to, properties, range, keyRanges }
+  return { from: head.from, to: head.to, artifacts, properties, range, keyRanges }
 }
 
 function readStyle(lines: string[], from: number, style: StyleSheet): number {

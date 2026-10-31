@@ -11,9 +11,9 @@ export async function run(context: ScenarioContext): Promise<void> {
   const boxes = result?.boxes ?? {}
   const expected: Record<string, [number, number]> = {
     源码构建节点: [80, 24],
-    上线安装节点: [80, 100],
-    站点巡检节点: [80, 176],
-    流水线收尾: [80, 252],
+    上线安装节点: [80, 128],
+    站点巡检节点: [80, 232],
+    流水线收尾: [80, 336],
   }
 
   for (const [name, [x, y]] of Object.entries(expected)) {

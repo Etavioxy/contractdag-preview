@@ -18,22 +18,93 @@ test('面板数据：四个框落在样板的坐标上，三条边的两端贴�
     payload.nodes.map((node) => [node.name, node.x, node.y, node.width, node.height, node.line]),
     [
       ['源码构建节点', 80, 24, 160, 56, 2],
-      ['上线安装节点', 80, 100, 160, 56, 9],
-      ['站点巡检节点', 80, 176, 160, 56, 19],
-      ['流水线收尾', 80, 252, 160, 56, 26],
+      ['上线安装节点', 80, 128, 160, 56, 9],
+      ['站点巡检节点', 80, 232, 160, 56, 19],
+      ['流水线收尾', 80, 336, 160, 56, 26],
     ],
   )
   assert.deepEqual(
-    payload.edges.map((edge) => [edge.artifact, edge.x1, edge.y1, edge.x2, edge.y2, edge.labelX, edge.labelY]),
+    payload.edges.map((edge) => [edge.artifacts.join(' '), edge.x1, edge.y1, edge.x2, edge.y2]),
     [
-      ['build.tar', 160, 80, 160, 93, 160, 90],
-      ['env-ready', 160, 156, 160, 169, 160, 166],
-      ['verify-report', 160, 232, 160, 245, 160, 242],
+      ['build.tar', 160, 80, 160, 121],
+      ['env-ready', 160, 184, 160, 225],
+      ['verify-report', 160, 288, 160, 329],
+    ],
+  )
+  // 单产物落在弧线中点上方 6px
+  assert.deepEqual(
+    payload.edges.map((edge) => edge.labels.map((label) => [label.text, Math.round(label.x), Math.round(label.y)])),
+    [
+      [['build.tar', 160, 98]],
+      [['env-ready', 160, 202]],
+      [['verify-report', 160, 306]],
     ],
   )
   assert.equal(payload.width, 320)
-  assert.equal(payload.height, 388)
+  assert.equal(payload.height, 472)
   assert.equal(payload.highlight, null)
+})
+
+test('面板数据：一条边带多个产物时标签沿弧线散开，不叠在一起', () => {
+  const source = [
+    '<nodes>',
+    '[甲:change]',
+    'path = /a',
+    'destination = 做完。',
+    '',
+    '[乙:root]',
+    'destination = 收尾。',
+    '</nodes>',
+    '',
+    '<links>',
+    '[[甲 -> 乙]]',
+    'artifact = [',
+    '  build.tar',
+    '  build.log',
+    '  build.map',
+    ']',
+    '</links>',
+  ].join('\n')
+
+  const payload = buildPreviewPayload(parse(source))
+  assert.ok(payload)
+
+  const edge = payload.edges[0]
+  assert.ok(edge)
+  assert.deepEqual(edge.artifacts, ['build.tar', 'build.log', 'build.map'])
+  assert.deepEqual(edge.labels.map((label) => label.text), ['build.tar', 'build.log', 'build.map'])
+
+  // 三个标签的 y 依次递增，间距够放下一行 11px 的字
+  const ys = edge.labels.map((label) => label.y)
+  assert.ok(ys[1]! > ys[0]! && ys[2]! > ys[1]!, '标签应沿弧线排开')
+  assert.ok(ys[1]! - ys[0]! >= 11)
+})
+
+test('面板数据：重复的产物名按条数报缺陷，列表里的也算', () => {
+  const source = [
+    '<nodes>',
+    '[甲:change]',
+    'path = /a',
+    'destination = 做完。',
+    '',
+    '[乙:root]',
+    'destination = 收尾。',
+    '</nodes>',
+    '',
+    '<links>',
+    '[[甲 -> 乙]]',
+    'artifact = [',
+    '  same-name',
+    '  same-name',
+    ']',
+    '</links>',
+  ].join('\n')
+
+  const analysis = parse(source)
+  assert.deepEqual(
+    analysis.diagnostics.map((diagnostic) => diagnostic.code),
+    ['duplicate-artifact'],
+  )
 })
 
 test('面板数据：契约正文随节点带过去', () => {
@@ -58,9 +129,9 @@ test('面板数据：展开的节点撑高自己与后续层，正文全部落�
   assert.equal(second?.expanded, true)
   assert.ok(second!.height > 56)
 
-  // 层距仍按样式区的 gap，只是从上一次的下边界开始算。
-  assert.equal(third?.y, second!.y + second!.height + 20)
-  assert.equal(fourth?.y, third!.y + third!.height + 20)
+  // 层距仍按样式区的 gap（默认 48），只是从上一次的下边界开始算。
+  assert.equal(third?.y, second!.y + second!.height + 48)
+  assert.equal(fourth?.y, third!.y + third!.height + 48)
 
   // 分隔线在头部下沿，正文最后一行仍在框内。
   assert.ok(second!.dividerY > second!.y + 56)
@@ -116,14 +187,11 @@ test('面板数据：斜边的箭头尖端贴框边，朝向与连线一致', ()
 
   // 连线是斜的：两框不在同一列，这正是轴对齐画法会错位的场景
   assert.ok(Math.abs(edge.arrow.tipX - edge.x1) > 1)
-  // 两翼关于连线对称，各自离线的距离都是半宽
-  const distToLine = (x: number, y: number): number => {
-    const dx = edge.arrow.tipX - edge.x1
-    const dy = edge.arrow.tipY - edge.y1
-    return Math.abs((x - edge.x1) * dy - (y - edge.y1) * dx) / Math.hypot(dx, dy)
-  }
-  assert.ok(Math.abs(distToLine(edge.arrow.leftX, edge.arrow.leftY) - 4) < 1e-6)
-  assert.ok(Math.abs(distToLine(edge.arrow.rightX, edge.arrow.rightY) - 4) < 1e-6)
+  // 两翼关于「底边中心 → 尖端」对称，各自离底边中心半个宽度
+  assert.ok(Math.abs((edge.arrow.leftX + edge.arrow.rightX) / 2 - edge.arrow.baseX) < 1e-6)
+  assert.ok(Math.abs((edge.arrow.leftY + edge.arrow.rightY) / 2 - edge.arrow.baseY) < 1e-6)
+  assert.ok(Math.abs(Math.hypot(edge.arrow.leftX - edge.arrow.baseX, edge.arrow.leftY - edge.arrow.baseY) - 4) < 1e-6)
+  assert.ok(Math.abs(Math.hypot(edge.arrow.rightX - edge.arrow.baseX, edge.arrow.rightY - edge.arrow.baseY) - 4) < 1e-6)
 })
 
 test('面板数据：竖直边的箭头仍沿轴，几何与轴对齐时一致', () => {
@@ -133,9 +201,9 @@ test('面板数据：竖直边的箭头仍沿轴，几何与轴对齐时一致',
   const edge = payload.edges[0]
   assert.ok(edge)
   assert.equal(edge.arrow.tipX, 160)
-  assert.equal(edge.arrow.tipY, 100)
+  assert.equal(edge.arrow.tipY, 128)
   assert.equal(edge.arrow.baseX, 160)
-  assert.equal(edge.arrow.baseY, 93)
+  assert.equal(edge.arrow.baseY, 121)
   assert.ok(Math.abs(edge.arrow.leftX - 156) < 1e-6)
   assert.ok(Math.abs(edge.arrow.rightX - 164) < 1e-6)
 })

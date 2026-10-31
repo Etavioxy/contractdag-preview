@@ -58,9 +58,9 @@ test('dump 出的 JSON 与 docs/concrete-insight.md 的模型一致', () => {
       },
     ],
     links: [
-      { from: '源码构建节点', to: '上线安装节点', artifact: 'build.tar' },
-      { from: '上线安装节点', to: '站点巡检节点', artifact: 'env-ready', target: '/srv/app/live' },
-      { from: '站点巡检节点', to: '流水线收尾', artifact: 'verify-report' },
+      { from: '源码构建节点', to: '上线安装节点', artifacts: ['build.tar'] },
+      { from: '上线安装节点', to: '站点巡检节点', artifacts: ['env-ready'], target: '/srv/app/live' },
+      { from: '站点巡检节点', to: '流水线收尾', artifacts: ['verify-report'] },
     ],
     diagnostics: [],
   })
@@ -142,6 +142,58 @@ test('direction 收 mermaid 的 TD，读进来归一到 TB', () => {
 
   assert.deepEqual(analysis.diagnostics, [])
   assert.equal(analysis.style.direction, 'TB')
+})
+
+test('连线可以带多个产物：多行 artifact 读成一个列表', () => {
+  const source = [
+    '<nodes>',
+    '[甲:change]',
+    'path = /a',
+    'destination = 做完。',
+    '',
+    '[乙:root]',
+    'destination = 收尾。',
+    '</nodes>',
+    '',
+    '<links>',
+    '[[甲 -> 乙]]',
+    'artifact = [',
+    '  build.tar',
+    '  build.log',
+    ']',
+    '</links>',
+  ].join('\n')
+
+  const analysis = parse(source)
+
+  assert.deepEqual(analysis.diagnostics, [])
+  assert.deepEqual(analysis.model?.links[0]?.artifacts, ['build.tar', 'build.log'])
+})
+
+test('只有 artifact 可以写多行，其余键写多行报错', () => {
+  const source = [
+    '<nodes>',
+    '[甲:root]',
+    'destination = 收尾。',
+    '</nodes>',
+    '',
+    '<links>',
+    '[[甲 -> 甲]]',
+    'artifact = x',
+    'notes = [',
+    '  一行',
+    '  两行',
+    ']',
+    '</links>',
+  ].join('\n')
+
+  const analysis = parse(source)
+
+  assert.equal(analysis.model, undefined)
+  assert.deepEqual(
+    analysis.diagnostics.map((diagnostic) => diagnostic.code),
+    ['bad-value'],
+  )
 })
 
 const broken: Array<{ name: string; source: string; code: string; line: number }> = [

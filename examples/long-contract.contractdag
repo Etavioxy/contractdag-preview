@@ -2,7 +2,12 @@
 
 [需求评审:query]
 path        = /srv/spec/review
-destination = 验收条目逐条可测，不可测的当场退回重写。
+destination = [
+  验收条目逐条可测，不可测的当场退回重写。
+  每条验收要写出一条能跑的命令或一次能点的操作。
+  涉及外部依赖的条目，必须给出依赖不可用时的降级表现。
+  争议条目只留两个选项，第三选项直接砍掉，避免评审发散。
+]
 
 [方案设计:change]
 path = [
@@ -15,28 +20,62 @@ destination = [
   接口变更给出前后对比样例，样例必须能跑。
   容量估算按峰值三倍留余量，并写出估算依据。
   依赖新增要说明为何不自己写，以及许可证是否相容。
-  失败模式的清单覆盖超时、重试、幂等与降级四种。
+  失败模式覆盖超时、重试、幂等与降级四种。
   监控指标至少给出延迟、错误率、饱和度三项。
-  上线顺序与开关位置写在同一份文档里，避免两处叙述打架。
+  上线顺序与开关位置写在同一份文档里，两处叙述不许打架。
   回滚步骤写到命令级，不写“回滚到上一版本”这类空话。
   最终方案交评审会，结论与反对意见一并记录。
 ]
 
-[编码:change]
-path        = /srv/app/src
-destination = 实现与方案一致；偏离方案处补一条 ADR 说明。
-
-[测试:change]
-path = [
-  /srv/app/test/unit
-  /srv/app/test/integration
-  /srv/app/test/fixture
+[风险评估:query]
+path        = /srv/spec/risk
+destination = [
+  列出三个最可能出事的环节，每个环节给出触发条件与观测指标。
+  与上一次发布相比，新增风险项要单独标注。
 ]
-destination = 单测覆盖核心分支，集成测试覆盖三条主链路，夹具与线上数据同构。
+
+[迁移评估:change]
+path = [
+  /srv/spec/design
+  /srv/spec/data
+]
+destination = [
+  旧数据与新结构并存期间的读写规则写清楚。
+  双写时长、对账口径、回退触发条件三样都要有数字。
+]
+
+[编码:change]
+path = [
+  /srv/app/src
+  /srv/app/migrations
+]
+destination = [
+  实现与方案一致；偏离方案处补一条 ADR 说明。
+  迁移脚本单独放一个目录，不许混在业务代码里。
+  每处偏离都要能在 ADR 里找到对应编号。
+]
+
+[单测:change]
+path        = /srv/app/test/unit
+destination = 核心分支全覆盖，异常分支至少各有一条用例。
+
+[集成测试:change]
+path        = /srv/app/test/integration
+destination = [
+  三条主链路各跑一遍，夹具与线上数据同构。
+  链路断在中间时，要能看出断在哪一步。
+]
+
+[兼容测试:change]
+path        = /srv/app/test/compat
+destination = 旧版本客户端仍可读写；不兼容的字段列清单。
 
 [上线:change]
 path        = /srv/app/prod
-destination = 灰度 10% 观察 30 分钟，错误率与延迟都不超基线才全量。
+destination = [
+  灰度 10% 观察 30 分钟，错误率与延迟都不超基线才全量。
+  全量后保留回滚窗口 60 分钟，期间不发新版本。
+]
 
 [复盘:root]
 destination = 复盘结束：方案、偏离、事故与改进项都归档到同一目录。
@@ -48,14 +87,38 @@ destination = 复盘结束：方案、偏离、事故与改进项都归档到同
 [[需求评审 -> 方案设计]]
 artifact = acceptance-list
 
+[[需求评审 -> 风险评估]]
+artifact = risk-brief
+
+[[需求评审 -> 迁移评估]]
+artifact = data-brief
+
 [[方案设计 -> 编码]]
 artifact = design-pack
 
-[[编码 -> 测试]]
+[[风险评估 -> 编码]]
+artifact = risk-checklist
+
+[[迁移评估 -> 编码]]
+artifact = migration-plan
+
+[[编码 -> 单测]]
 artifact = build-candidate
 
-[[测试 -> 上线]]
-artifact = test-evidence
+[[编码 -> 集成测试]]
+artifact = app-bundle
+
+[[编码 -> 兼容测试]]
+artifact = compat-build
+
+[[单测 -> 上线]]
+artifact = unit-report
+
+[[集成测试 -> 上线]]
+artifact = integration-evidence
+
+[[兼容测试 -> 上线]]
+artifact = compat-matrix
 
 [[上线 -> 复盘]]
 artifact = release-record

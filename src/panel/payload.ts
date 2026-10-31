@@ -3,6 +3,15 @@
 import { layout, layoutDefaults } from '../layout.ts'
 import type { NodeKind } from '../model.ts'
 import type { Analysis } from '../parser.ts'
+import type { Point } from './viewport.ts'
+
+/** 三次贝塞尔：两端点与两个控制点。 */
+interface Curve {
+  p0: Point
+  c1: Point
+  c2: Point
+  p3: Point
+}
 
 export interface PreviewNode {
   name: string
@@ -35,18 +44,27 @@ export interface PreviewArrow {
   leftY: number
   rightX: number
   rightY: number
+  /** 该边带几个产物，标签按这个数散开。 */
+  count: number
+}
+
+export interface PreviewLabel {
+  x: number
+  y: number
+  text: string
 }
 
 export interface PreviewEdge {
   from: string
   to: string
-  artifact: string
+  artifacts: string[]
   x1: number
   y1: number
   x2: number
   y2: number
-  labelX: number
-  labelY: number
+  /** 弧线的 SVG 路径。 */
+  path: string
+  labels: PreviewLabel[]
   arrow: PreviewArrow
   stroke?: string
 }
@@ -70,6 +88,8 @@ const canvasMargin = 80
 /** 箭头占的长度：线尾沿线回退这一段，三角形自己补上。 */
 const arrowroom = 7
 const arrowHalfWidth = 4
+/** 相邻两个产物标签至少留这么高，11px 的字才不叠。 */
+const labelSpacing = 14
 const header = layoutDefaults.nodeHeight
 const lineStep = 13
 const dividerGap = 6
@@ -143,18 +163,18 @@ export function buildPreviewPayload(
       ? { x: to.x + to.width / 2, y: to.y }
       : { x: to.x, y: to.y + to.height / 2 }
     const linkStyle = style.linkStyles.find((entry) => entry.from === link.from && entry.to === link.to)
-    const arrow = arrowGeometry(start, end)
+    const curve = curveBetween(start, end, vertical)
+    const arrow = arrowGeometry(curve, link.artifacts)
     edges.push({
       from: link.from,
       to: link.to,
-      artifact: link.properties['artifact'] ?? '',
+      artifacts: [...link.artifacts],
       x1: start.x,
       y1: start.y,
-      // 线尾沿线方向收，箭头三角形自己补上那段，两者朝向才一致。
       x2: arrow.baseX,
       y2: arrow.baseY,
-      labelX: (start.x + end.x) / 2,
-      labelY: (start.y + end.y) / 2,
+      path: `M ${start.x},${start.y} C ${curve.c1.x},${curve.c1.y} ${curve.c2.x},${curve.c2.y} ${arrow.baseX},${arrow.baseY}`,
+      labels: labelsAlong(curve, link.artifacts),
       arrow,
       stroke: linkStyle?.properties['stroke'],
     })
@@ -176,14 +196,37 @@ export function buildPreviewPayload(
   }
 }
 
-/** 契约正文：path 每项带标签，destination 保持原句，按框宽折行。 */
 /**
- * 箭头几何：尖端落在目标框边，底边沿连线方向回退，两翼按法线张开。
- * 相邻两层的框常不在同一列，连线是斜的；按轴对齐画三角形就会和线错开。
+ * 弧线：两端沿流动方向出入，控制点各占一半，斜边也走成平滑的 S 形。
+ * 直线在密集交叉处会连成一团，弧形能把来路和去向分开。
  */
-function arrowGeometry(start: { x: number; y: number }, end: { x: number; y: number }): PreviewArrow {
-  const dx = end.x - start.x
-  const dy = end.y - start.y
+function curveBetween(start: Point, end: Point, vertical: boolean): Curve {
+  const c1 = vertical
+    ? { x: start.x, y: start.y + (end.y - start.y) * 0.5 }
+    : { x: start.x + (end.x - start.x) * 0.5, y: start.y }
+  const c2 = vertical
+    ? { x: end.x, y: end.y - (end.y - start.y) * 0.5 }
+    : { x: end.x - (end.x - start.x) * 0.5, y: end.y }
+  return { p0: start, c1, c2, p3: end }
+}
+
+function bezierAt(curve: Curve, t: number): Point {
+  const u = 1 - t
+  const a = u * u * u
+  const b = 3 * u * u * t
+  const c = 3 * u * t * t
+  const d = t * t * t
+  return {
+    x: a * curve.p0.x + b * curve.c1.x + c * curve.c2.x + d * curve.p3.x,
+    y: a * curve.p0.y + b * curve.c1.y + c * curve.c2.y + d * curve.p3.y,
+  }
+}
+
+/** 箭头几何：尖端落在目标框边，底边沿曲线在终点的切向回退，两翼按法线张开。 */
+function arrowGeometry(curve: Curve, artifacts: string[]): PreviewArrow {
+  const end = curve.p3
+  const dx = end.x - curve.c2.x
+  const dy = end.y - curve.c2.y
   const length = Math.hypot(dx, dy) || 1
   const ux = dx / length
   const uy = dy / length
@@ -201,7 +244,22 @@ function arrowGeometry(start: { x: number; y: number }, end: { x: number; y: num
     leftY: baseY + py,
     rightX: baseX - px,
     rightY: baseY - py,
+    count: artifacts.length,
   }
+}
+
+/** 产物标签沿弧线排开：一个放中点，多个按至少一行的间距散开，免得叠在一起。 */
+function labelsAlong(curve: Curve, artifacts: string[]): PreviewLabel[] {
+  const count = artifacts.length
+  const chord = Math.hypot(curve.p3.x - curve.p0.x, curve.p3.y - curve.p0.y) || 1
+  // 每个标签至少要占一行字高，同时不许跑出曲线的两端。
+  const step = count === 1 ? 0 : Math.min(0.76 / (count - 1), labelSpacing / chord)
+
+  return artifacts.map((text, index) => {
+    const t = count === 1 ? 0.5 : 0.5 + (index - (count - 1) / 2) * step
+    const point = bezierAt(curve, Math.min(0.88, Math.max(0.12, t)))
+    return { x: point.x, y: point.y - 6, text }
+  })
 }
 
 /** 契约正文：path 每项带标签，destination 保持原句，按框宽折行。 */

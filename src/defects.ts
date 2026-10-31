@@ -33,19 +33,19 @@ function duplicateArtifacts(model: ContractModel): Diagnostic[] {
   const firstSeen = new Map<string, DependencyEdge>()
   const diagnostics: Diagnostic[] = []
   for (const link of model.links) {
-    const artifact = link.properties['artifact']
-    if (artifact === undefined) continue
-    const first = firstSeen.get(artifact)
-    if (first === undefined) {
-      firstSeen.set(artifact, link)
-      continue
+    for (const artifact of link.artifacts) {
+      const first = firstSeen.get(artifact)
+      if (first === undefined) {
+        firstSeen.set(artifact, link)
+        continue
+      }
+      diagnostics.push({
+        layer: 'structural',
+        code: 'duplicate-artifact',
+        message: `产物名重复：${artifact} 已挂在 ${first.from} -> ${first.to} 上`,
+        range: link.range,
+      })
     }
-    diagnostics.push({
-      layer: 'structural',
-      code: 'duplicate-artifact',
-      message: `产物名重复：${artifact} 已挂在 ${first.from} -> ${first.to} 上`,
-      range: link.range,
-    })
   }
   return diagnostics
 }

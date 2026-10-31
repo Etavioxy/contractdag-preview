@@ -20,7 +20,7 @@ export async function run(context: ScenarioContext): Promise<void> {
   await vscode.commands.executeCommand('contractdag.preview')
   const state = await context.waitForRecord((record) => record['event'] === 'preview-state')
   context.check('图先画出来：四节点三边', state?.['nodes'] === 4 && state?.['edges'] === 3)
-  context.check('画布按坐标展开', state?.['viewBox'] === '0 0 320 388')
+  context.check('画布按坐标展开', state?.['viewBox'] === '0 0 320 472')
 
   context.note('tabs', { groups: tabGroupsSnapshot(), editorColumn: editor.viewColumn ?? -1 })
   const tabs = previewTabs()

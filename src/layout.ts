@@ -31,7 +31,8 @@ export interface LayoutJson {
 
 export const layoutDefaults: Required<Omit<LayoutOptions, 'heights'>> = {
   direction: 'TB',
-  gap: 20,
+  // 层间要同时放下弧线、箭头与若干个产物标签：20 太挤，标签会被框压住。
+  gap: 48,
   nodeWidth: 160,
   nodeHeight: 56,
   gapCross: 40,

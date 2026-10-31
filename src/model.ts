@@ -24,7 +24,9 @@ export interface DagNode {
 export interface DependencyEdge {
   from: string
   to: string
-  /** 连线区的自由键值，`artifact` 必在其中。 */
+  /** 交接的产物：一条边可以带多个，`artifact` 必填且至少一个。 */
+  artifacts: string[]
+  /** 连线区的其余自由键值。 */
   properties: Record<string, string>
   range: SourceRange
   keyRanges: Record<string, SourceRange>
@@ -67,7 +69,8 @@ export interface Diagnostic {
   range: SourceRange
 }
 
-export const defaultGap = 20
+/** 层间默认空隙：要同时放下弧线、箭头与若干个产物标签。 */
+export const defaultGap = 48
 
 export const directionValues: readonly StyleSheet['direction'][] = ['TB', 'BT', 'LR', 'RL']
 
@@ -87,7 +90,7 @@ export interface DumpNode {
 
 export interface DumpJson {
   nodes: DumpNode[]
-  links: Array<Record<string, string>>
+  links: Array<Record<string, string | string[]>>
   diagnostics: Diagnostic[]
 }
 
@@ -101,7 +104,7 @@ export function toDumpJson(model: ContractModel, diagnostics: Diagnostic[]): Dum
       destination: node.destination,
     })),
     links: model.links.map((link) => {
-      const record: Record<string, string> = { from: link.from, to: link.to }
+      const record: Record<string, string | string[]> = { from: link.from, to: link.to, artifacts: [...link.artifacts] }
       for (const [key, value] of Object.entries(link.properties)) {
         if (key === 'from' || key === 'to') continue
         record[key] = value

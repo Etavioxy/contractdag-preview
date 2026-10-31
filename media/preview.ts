@@ -79,7 +79,7 @@ function render(payload: PreviewPayload): void {
   const edges = element('g', { class: 'edges' })
   for (const edge of payload.edges) {
     const group = element('g', { class: 'edge' })
-    const line = element('line', { x1: edge.x1, y1: edge.y1, x2: edge.x2, y2: edge.y2 })
+    const line = element('path', { d: edge.path, fill: 'none' })
     const arrow = element('polygon', {
       points: `${edge.arrow.tipX},${edge.arrow.tipY} ${edge.arrow.leftX},${edge.arrow.leftY} ${edge.arrow.rightX},${edge.arrow.rightY}`,
     })
@@ -87,9 +87,12 @@ function render(payload: PreviewPayload): void {
       line.setAttribute('stroke', edge.stroke)
       arrow.setAttribute('fill', edge.stroke)
     }
-    const label = element('text', { x: edge.labelX, y: edge.labelY - 4 })
-    label.textContent = edge.artifact
-    group.append(line, arrow, label)
+    group.append(line, arrow)
+    for (const label of edge.labels) {
+      const text = element('text', { x: label.x, y: label.y })
+      text.textContent = label.text
+      group.append(text)
+    }
     edges.append(group)
   }
   graph.append(edges)
