@@ -88,8 +88,6 @@ const canvasMargin = 80
 /** 箭头占的长度：线尾沿线回退这一段，三角形自己补上。 */
 const arrowroom = 7
 const arrowHalfWidth = 4
-/** 相邻两个产物标签至少留这么高，11px 的字才不叠。 */
-const labelSpacing = 14
 const header = layoutDefaults.nodeHeight
 /** 浮层里正文的折行宽度，以半角列计：浮层的可用宽度比框宽，仍按列折，不依赖字体度量。 */
 const contentColumns = 26
@@ -155,6 +153,8 @@ export function buildPreviewPayload(
 
   const byName = new Map(nodes.map((node) => [node.name, node]))
   const edges: PreviewEdge[] = []
+  /** 边序号 → 弧线：位次要沿曲线算点，分配标签时复用同一份几何。 */
+  const curves = new Map<number, Curve>()
   for (const link of model.links) {
     const from = byName.get(link.from)
     const to = byName.get(link.to)
@@ -178,12 +178,15 @@ export function buildPreviewPayload(
       y2: arrow.baseY,
       curve: { c1: curve.c1, c2: curve.c2 },
       path: `M ${start.x},${start.y} C ${curve.c1.x},${curve.c1.y} ${curve.c2.x},${curve.c2.y} ${arrow.baseX},${arrow.baseY}`,
-      labels: labelsAlong(curve, link.artifacts),
+      labels: [],
       arrow,
       defects: defectsOf.get(rangeKey(link.range.startLine, link.range.startCharacter)) ?? [],
       stroke: linkStyle?.properties['stroke'],
     })
+    curves.set(edges.length - 1, curve)
   }
+
+  placeLabels(edges, curves, vertical)
 
   const right = nodes.length === 0 ? 0 : Math.max(...nodes.map((node) => node.x + node.width))
   const bottom = nodes.length === 0 ? 0 : Math.max(...nodes.map((node) => node.y + node.height))
@@ -252,18 +255,38 @@ function arrowGeometry(curve: Curve, artifacts: string[]): PreviewArrow {
   }
 }
 
-/** 产物标签沿弧线排开：一个放中点，多个按至少一行的间距散开，免得叠在一起。 */
-function labelsAlong(curve: Curve, artifacts: string[]): PreviewLabel[] {
-  const count = artifacts.length
-  const chord = Math.hypot(curve.p3.x - curve.p0.x, curve.p3.y - curve.p0.y) || 1
-  // 每个标签至少要占一行字高，同时不许跑出曲线的两端。
-  const step = count === 1 ? 0 : Math.min(0.76 / (count - 1), labelSpacing / chord)
-
-  return artifacts.map((text, index) => {
-    const t = count === 1 ? 0.5 : 0.5 + (index - (count - 1) / 2) * step
-    const point = bezierAt(curve, Math.min(0.88, Math.max(0.12, t)))
-    return { x: point.x, y: point.y - 6, text }
+/**
+ * 标签按层间位次落位：同一缝上的标签先按交叉方向排序，第 i 个放 t=(i+1)/(L+1)。
+ * 单标签正好落在中点；层间越密，层距越高，位次之间的垂直距离随层距一起拉开。
+ */
+function placeLabels(edges: PreviewEdge[], curves: Map<number, Curve>, vertical: boolean): void {
+  const bands = new Map<number, number[]>()
+  edges.forEach((edge, index) => {
+    // 缝的键取出发点的流动坐标：竖直方向是源框下沿的 y，水平方向是源框右沿的 x。
+    const key = Math.round(vertical ? edge.y1 : edge.x1)
+    const band = bands.get(key)
+    if (band === undefined) bands.set(key, [index])
+    else band.push(index)
   })
+
+  const crossOf = (curve: Curve): number =>
+    vertical ? (curve.p0.x + curve.p3.x) / 2 : (curve.p0.y + curve.p3.y) / 2
+
+  for (const band of bands.values()) {
+    const lanes = band.flatMap((index) => {
+      const curve = curves.get(index)
+      const edge = edges[index]
+      if (curve === undefined || edge === undefined) return []
+      return edge.artifacts.map((text) => ({ curve, edge, text }))
+    })
+    // 排序要稳定：同一个源扇出的多条边交叉坐标相近时，仍按连线区里的书写顺序排。
+    lanes.sort((left, right) => crossOf(left.curve) - crossOf(right.curve))
+
+    lanes.forEach((lane, index) => {
+      const point = bezierAt(lane.curve, (index + 1) / (lanes.length + 1))
+      lane.edge.labels.push({ x: point.x, y: point.y - 6, text: lane.text })
+    })
+  }
 }
 
 /** 契约正文：path 每项带标签，destination 保持原句，按框宽折行。 */

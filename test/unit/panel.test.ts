@@ -45,6 +45,17 @@ test('面板数据：四个框落在样板的坐标上，三条边的两端贴�
   assert.equal(payload.highlight, null)
 })
 
+test('面板数据：同一缝上的两条边，标签按位次错开', () => {
+  const payload = buildPreviewPayload(parse(readFileSync(join(fixtures, 'fork.contractdag'), 'utf8')))
+  assert.ok(payload)
+
+  const outgoing = payload.edges.filter((edge) => edge.from === '甲')
+  assert.equal(outgoing.length, 2)
+  const ys = outgoing.map((edge) => edge.labels[0]?.y ?? 0).sort((left, right) => left - right)
+  // L=2 时位次是 1/3 与 2/3，两条标签的垂直距离由层距撑开
+  assert.ok(ys[1]! - ys[0]! >= 14)
+})
+
 test('面板数据：一条边带多个产物时标签沿弧线散开，不叠在一起', () => {
   const source = [
     '<nodes>',
