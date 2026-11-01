@@ -1,29 +1,31 @@
 # Contract DAG Preview
 
-把一份 `.contractdag` 契约声明文件画成有向无环图：左边改文件，右边那张图当场跟着变。
+English | [中文](README.zh.md)
 
-## 画的是契约，不是流程
+Draw a `.contractdag` contract declaration as a directed acyclic graph: edit the file on the left, the graph on the right follows.
 
-每个节点写下两件事——它允许碰哪些位置（`path`），以及它做完之后是什么样（`destination`）。产物名不写在节点上，写在节点之间的连线上（`artifact`）：产物是交接物，只属于那一次交接。
+## Draws contracts, not workflows
 
-运行时概念不进文件。重试几次、失败了回滚到哪、要不要人工介入，这些都不在语法里——文件只描述做完之后的状态，读者判的是结果对不对，不是流程走没走对。
+Every node states two things: which locations it may touch (`path`), and what holds once it is done (`destination`). Artifacts are not declared on nodes but on the links between them (`artifact`) — an artifact belongs to a hand-off.
 
-## 安装
+Runtime concepts stay out of the file. How many retries, where to roll back, whether a human steps in: none of that is in the grammar. The file describes the state after a job is done, so a reader judges the outcome, not the choreography.
 
-装打包好的 vsix：
+## Install
+
+Search for `Contract DAG Preview` in the Extensions view, or install a packaged build:
 
 ```bash
-code --install-extension contractdag-preview-<版本>.vsix
+code --install-extension contractdag-preview-<version>.vsix
 ```
 
-## 第一次预览
+## First preview
 
-1. 新建一个文件，后缀 `.contractdag`
-2. 点编辑器右上角的图标，或从命令面板执行 `Contract DAG: 打开预览`
-3. 图开在右侧相邻的编辑器组里，与文本并排；再执行一次只是把那格提到前面，不重复开
-4. 切到别的标签页不销毁，切回来还原上次的比例与位置
+1. Create a file with the `.contractdag` extension
+2. Click the icon in the editor title bar, or run `Contract DAG: 打开预览` from the Command Palette
+3. The graph opens in the editor group beside the text; running the command again only brings that group forward
+4. Switching to another tab keeps the panel alive; coming back restores the previous zoom and position
 
-## 一份声明文件长这样
+## What a declaration file looks like
 
 ```contractdag
 <nodes>
@@ -55,61 +57,61 @@ artifact = verify-report
 </links>
 ```
 
-文件固定三个区，顺序是节点、连线、样式；样式区可以整块省略。
+A file has exactly three regions, in this order: nodes, links, style. The style region may be omitted entirely.
 
-| 区 | 认什么 |
+| Region | Accepts |
 |---|---|
-| `<nodes>` | `[名字:种类]` 表头，键只有 `path` 与 `destination`；种类为 `change`（默认）、`query`、`root` |
-| `<links>` | `[[源 -> 目的]]` 表头；`artifact` 必填，可写多行（一条边交多个产物），其余键按单行自由写 |
-| `<style>` | 照 mermaid 的三句：`direction TB / BT / LR / RL`、`gap 32`、`font 更纱黑体 SC` 这类全局设置，`classDef` 定义属性、`class` 挂到节点、`linkStyle` 挂到连线 |
+| `<nodes>` | `[name:kind]` headers; keys are `path` and `destination`; kind is `change` (default), `query`, or `root` |
+| `<links>` | `[[from -> to]]` headers; `artifact` is required and may span multiple lines (one link can deliver several artifacts); any other key is free-form on a single line |
+| `<style>` | Global settings such as `direction TB / BT / LR / RL`, `gap 32`, `font Sarasa Mono SC`, plus mermaid's three lines: `classDef` defines properties, `class` attaches them to nodes, `linkStyle` attaches them to links |
 
-块的边界是表头，不是缩进；`#` 起头的行是注释，不进模型。
+Blocks are delimited by headers, not indentation; lines starting with `#` are comments and never reach the model.
 
-`change` 节点不写 `path` 就不是合法声明——它要动东西，必须说清允许动哪里。
+A `change` node without `path` is not a legal declaration — it touches things, so it must say where it may touch them.
 
-## 图上看得见什么
+## What the graph shows
 
-- **框**：一律 160×56，名字在上、种类在下，右上角一个角标。正文不进框，点角标展开成浮层，贴在图旁边，可以选中、可以查找
-- **边**：曲线，箭头贴在目标框边上；产物名落在两层之间的缝里，同一个缝里的标签互不重叠
-- **缩小**：比例低于 0.75 先收产物标签，低于 0.55 再收种类，名字与边框一直留到最小
-- **缺陷**：成环的边标红，断头节点转灰，变更节点缺 `path`、产物重名各打一个角标，引用了未声明节点的连线画不出来
-- **左下角**：`节点数 · 边数 · 比例`，上面一行一行列缺陷（`行号: 消息`）；没有缺陷时收起
+- **Nodes**: always 160×56, name on top, kind below, a badge in the top-right corner. Body text never enters the frame; click the badge to expand it into a floating card next to the graph that you can select and search
+- **Links**: curved, arrowheads sitting on the target frame; artifact names land in the gap between two layers, and labels in the same gap never overlap
+- **Zooming out**: below 0.75 the artifact labels go first, below 0.55 the kind goes too; names and borders stay until the minimum
+- **Defects**: edges in a cycle turn red, dangling nodes turn grey, a `change` node missing `path` and a duplicated artifact name each get a badge, and a link to an undeclared node cannot be drawn
+- **Bottom-left**: `nodes · links · zoom`, with defects listed line by line (`line: message`) above it; the list collapses when there are none
 
-图不会因为结构缺陷而消失——成环与断头的拓扑仍然画得出来，缺陷标在图上。
+The graph is never withdrawn because of a defect — cycles and dangling nodes still render, and the defects are marked on the drawing.
 
-## 操作
+## Interaction
 
-| 输入 | 动作 |
+| Input | Action |
 |---|---|
-| 滚轮 / 双指滑行 | 上下滚动 |
-| Shift + 滚轮 | 左右滚动 |
-| Ctrl/Cmd + 滚轮 | 以指针为锚缩放（0.5 到 3，每次乘 1.1） |
-| 在空白或节点上拖动 | 平移画布 |
-| 单击节点 | 光标跳到这个节点的声明行 |
-| 单击右上角角标 | 展开或收起这个节点的正文浮层 |
+| Wheel / two-finger scroll | Scroll vertically |
+| Shift + wheel | Scroll horizontally |
+| Ctrl/Cmd + wheel | Zoom anchored at the pointer (0.5 to 3, ×1.1 per step) |
+| Drag on empty space or a node | Pan |
+| Click a node | Move the cursor to that node's declaration |
+| Click the corner badge | Expand or collapse that node's body card |
 
-拖动超过 4px 才算拖动，阈值内算点击——所以在图上快扫不会把光标带跑。
+A drag only counts past 4px, anything shorter is a click — so a quick sweep across the graph will not move your cursor.
 
-## 命令
+## Commands
 
-| 命令 | 作用 |
+| Command | Effect |
 |---|---|
-| `Contract DAG: 打开预览` | 打开或提到前面 |
-| `Contract DAG: 导出契约模型` | 把解析出的模型 JSON 写进输出面板 |
-| `Contract DAG: 观测编辑器三样` | 把着色段数、折叠区间数、光标处补全候选打成一条记录 |
-| `Contract DAG: 计算图布局` | 打印这份文件算出的坐标 |
+| `Contract DAG: 打开预览` | Open the preview, or bring it forward |
+| `Contract DAG: 导出契约模型` | Print the parsed model as JSON to the output channel |
+| `Contract DAG: 观测编辑器三样` | Record token count, folding range count and the completion candidates at the cursor |
+| `Contract DAG: 计算图布局` | Print the coordinates computed for this file |
 
-## 编辑器支持
+## Editor support
 
-`.contractdag` 有自己的语言 ID `contract-dag`：区标签、键名、种类、连线箭头、注释分别着色；三个区各折一段，节点块与连线块也各折一段；补全按光标所在区给候选——节点区给 `path` / `destination` 与种类，连线区给 `artifact` 与文档里已经写出的节点名，样式区给关键字与方向。
+`.contractdag` has its own language id, `contract-dag`: region tags, keys, kinds, link arrows and comments are coloured separately; each region folds as one range, and so does each node or link block; completions follow the region under the cursor — keys and kinds in the node region, `artifact` and already-declared node names in the link region, keywords and directions in the style region.
 
-## 边界
+## Limits
 
-- 预览只读：图上的一切操作都不改文件，改图就是改文本
-- 不画运行时：没有重试、超时、回滚、进程这些概念
-- 产物标签的宽度在扩展侧按列估算（拿不到字体度量），标签贴着它自己的曲线，与别的曲线相交时不做避让
-- 只有 `.contractdag` 会被激活，别的文件不触发
+- The preview is read-only: nothing you do on the graph writes to the file, and changing the graph means changing the text
+- No runtime in the drawing: no retries, timeouts, rollbacks or processes
+- Artifact label widths are estimated from column counts (no font metrics on the extension side); labels stick to their own curve and are not moved out of the way of other curves
+- Only `.contractdag` activates the extension; no other file does
 
-## 许可
+## License
 
 MIT

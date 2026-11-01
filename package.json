@@ -1,10 +1,14 @@
 {
   "name": "contractdag-preview",
   "displayName": "Contract DAG Preview",
-  "description": "把契约声明文件画成有向无环图",
-  "version": "0.2.4",
-  "publisher": "contractdag",
+  "description": "Preview .contractdag contract declarations as a directed acyclic graph, with structural defects marked.",
+  "version": "0.1.0",
+  "publisher": "Etavioxy",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Etavioxy/contractdag-preview.git"
+  },
   "icon": "media/icon.png",
   "categories": [
     "Visualization",
