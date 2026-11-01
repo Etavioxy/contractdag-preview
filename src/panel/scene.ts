@@ -1,7 +1,7 @@
 /** 图元表：面板数据 + 视口状态 → 一串待画的矩形、曲线、多边形与文字。纯计算，不碰 DOM。 */
 
 import type { PreviewEdge, PreviewNode, PreviewPayload } from './payload.ts'
-import { nameSize } from './node-frame.ts'
+import { nameSize } from './node-size.ts'
 import { densityOf, type Density, type Point, type ViewTransform } from './viewport.ts'
 
 /** 画到屏幕上的颜色。webview 从主题变量取，测试给固定值。 */

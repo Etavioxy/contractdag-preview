@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { layoutDefaults } from '../../src/layout.ts'
-import { nameInset, nameSize, nodeWidthFor } from '../../src/panel/node-frame.ts'
+import { nodeWidthFor } from '../../src/panel/node-frame.ts'
+import { nameInset, nameSize } from '../../src/panel/node-size.ts'
 import { estimateTextWidth } from '../../src/panel/text.ts'
 
 test('框宽：短名字用默认宽，长名字按估宽撑开', () => {

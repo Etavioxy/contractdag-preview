@@ -38,7 +38,7 @@
 
 ## 常量出处
 
-排版常量在 `payload.ts`（`contentColumns`、`headerHeight`）、`scene.ts`（种类与角标的落点）、`node-frame.ts`（`nameSize`、`nameInset`、框宽）、`text.ts`（`halfWidthEm`、`widthSafety`，估宽）、`body-layer.ts`（浮层的贴边距与内缩）与 `layout.ts`（`labelHeight`、`labelSpacing`、`padding`），比例、步进、阻尼与密度阈值在 `viewport.ts`（`scaleLimits`、`scaleStep`、`dampingFactor`、`densityThresholds`）。本文的数字与这几处常量同值。
+排版常量在 `payload.ts`（`contentColumns`、`headerHeight`）、`scene.ts`（种类与角标的落点）、`node-size.ts`（`nameSize`、`nameInset`，webview 也直接引用）、`node-frame.ts`（框宽）、`text.ts`（`halfWidthEm`、`widthSafety`，估宽）、`body-layer.ts`（浮层的贴边距与内缩）与 `layout.ts`（`labelHeight`、`labelSpacing`、`padding`），比例、步进、阻尼与密度阈值在 `viewport.ts`（`scaleLimits`、`scaleStep`、`dampingFactor`、`densityThresholds`）。本文的数字与这几处常量同值。
 
 ## 缩放与滚动的边界
 
