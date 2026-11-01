@@ -101,6 +101,23 @@ artifact = verify-report
 | `Contract DAG: 观测编辑器三样` | 把着色段数、折叠区间数、光标处补全候选打成一条记录 |
 | `Contract DAG: 计算图布局` | 打印这份文件算出的坐标 |
 
+## 不开编辑器也能用
+
+同一个解析器也发成 Node 库和命令行，给不打开 VS Code 的工具用：
+
+```bash
+npm install contractdag-preview
+npx contractdag pipeline.contractdag
+```
+
+```js
+import { parseContract } from 'contractdag-preview'
+
+const { model, diagnostics } = parseContract(source)
+```
+
+文法不合法时没有 `model`；节点、连线与诊断都带从 0 起的 `range`。命令行退出码：`0` 无缺陷、`1` 有模型但有缺陷、`2` 没有模型。Rust 侧不用命令行，直接用 crate：`cargo add contractdag`。分发、兼容承诺，以及钉住两份实现的语料见 [docs/library.md](docs/library.md)。
+
 ## 编辑器支持
 
 `.contractdag` 有自己的语言 ID `contract-dag`：区标签、键名、种类、连线箭头、注释分别着色；三个区各折一段，节点块与连线块也各折一段；补全按光标所在区给候选——节点区给 `path` / `destination` 与种类，连线区给 `artifact` 与文档里已经写出的节点名，样式区给关键字与方向。

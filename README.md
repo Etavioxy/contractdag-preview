@@ -101,6 +101,23 @@ A drag only counts past 4px, anything shorter is a click — so a quick sweep ac
 | `Contract DAG: 观测编辑器三样` | Record token count, folding range count and the completion candidates at the cursor |
 | `Contract DAG: 计算图布局` | Print the coordinates computed for this file |
 
+## The parser without the editor
+
+The same parser ships as a Node library and a CLI, for tooling that never opens VS Code:
+
+```bash
+npm install contractdag-preview
+npx contractdag pipeline.contractdag
+```
+
+```js
+import { parseContract } from 'contractdag-preview'
+
+const { model, diagnostics } = parseContract(source)
+```
+
+`model` is absent when the text does not parse; every node, link and diagnostic carries a 0-based range. The CLI exits `0` when there are no defects, `1` when the model has defects, `2` when it has no model. Rust consumers use the crate instead of the CLI: `cargo add contractdag`. Details, compatibility promises and the conformance corpus that keeps both implementations aligned: [docs/library.md](docs/library.md).
+
 ## Editor support
 
 `.contractdag` has its own language id, `contract-dag`: region tags, keys, kinds, link arrows and comments are coloured separately; each region folds as one range, and so does each node or link block; completions follow the region under the cursor — keys and kinds in the node region, `artifact` and already-declared node names in the link region, keywords and directions in the style region.
