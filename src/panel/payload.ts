@@ -3,7 +3,8 @@
 import { labelHeight, labelSpacing, layoutDefaults, layoutLayers, type LayoutDetail } from '../layout.ts'
 import type { Diagnostic, NodeKind } from '../model.ts'
 import type { Analysis } from '../parser.ts'
-import { assignLabels, isWideChar, type Curve, type SeamPlacement } from './labels.ts'
+import { assignLabels, type Curve, type SeamPlacement } from './labels.ts'
+import { isWideChar } from './text.ts'
 import type { Point } from './viewport.ts'
 
 /** 一次重排—算标签的中间结果。 */

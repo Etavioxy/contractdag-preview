@@ -2,12 +2,12 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import {
   assignLabels,
-  estimateTextWidth,
   partitionLanes,
   pointAt,
   solveFlowT,
   type Curve,
 } from '../../src/panel/labels.ts'
+import { estimateTextWidth } from '../../src/panel/text.ts'
 
 test('区间划分：左端点排序后复用已结束的道，得到最少道数', () => {
   const intervals = [

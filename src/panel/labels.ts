@@ -1,5 +1,6 @@
 /** 标签落位：按缝分道、按道偏移、按缝带中点解 t。纯计算，不碰 DOM。 */
 
+import { estimateTextWidth } from './text.ts'
 import type { Point } from './viewport.ts'
 
 export interface Curve {
@@ -26,23 +27,6 @@ export interface SeamPlacement {
   /** 每缝的道数，下标是缝号。 */
   rows: number[]
   labels: LabelAnchor[]
-}
-
-/** 半角列折算成字号的比例：约一个半角的平均字宽。 */
-export const halfWidthEm = 0.55
-/** 估宽留的余量：估窄会叠字，估宽只是多占位。 */
-export const widthSafety = 1.1
-
-/** 全角与 CJK 记两列，其余记一列。 */
-export function isWideChar(char: string): boolean {
-  return /[\u1100-\u115F\u2E80-\uA4CF\uAC00-\uD7A3\uF900-\uFAFF\uFE30-\uFE6F\uFF00-\uFF60\uFFE0-\uFFE6]/.test(char)
-}
-
-/** 宿主拿不到字体度量，只能按列估：半角记 0.55 个字号，再留一成余量。 */
-export function estimateTextWidth(text: string, fontSize: number): number {
-  let columns = 0
-  for (const char of text) columns += isWideChar(char) ? 2 : 1
-  return columns * fontSize * halfWidthEm * widthSafety
 }
 
 /** 区间划分：按左端点排序，优先复用已经结束的道，得到最少道数。 */

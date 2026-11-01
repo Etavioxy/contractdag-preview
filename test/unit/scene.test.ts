@@ -5,6 +5,7 @@ import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { buildPreviewPayload } from '../../src/panel/payload.ts'
 import { buildScene, type Scene, type SceneItem, type ScenePalette } from '../../src/panel/scene.ts'
+import { estimateTextWidth } from '../../src/panel/text.ts'
 import { parse } from '../../src/parser.ts'
 
 const fixtures = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures')
@@ -76,6 +77,49 @@ test('图元表：四个框画在 0.1.0 的同一批坐标上，名字与种类�
 
   assert.equal(scene.width, 320)
   assert.equal(scene.height, 472)
+})
+
+test('图元表：名字超出框宽时截断，宽度不越过左右各 12 的内缩', () => {
+  const source = parse(
+    [
+      '<nodes>',
+      '[这是一个非常长的节点名字会明显超出框的宽度:change]',
+      'path = /srv/app',
+      'destination = 做完。',
+      '',
+      '[收尾:root]',
+      'destination = 收尾。',
+      '</nodes>',
+      '',
+      '<links>',
+      '[[这是一个非常长的节点名字会明显超出框的宽度 -> 收尾]]',
+      'artifact = done.tar',
+      '</links>',
+    ].join('\n'),
+  )
+  const payload = buildPreviewPayload(source)
+  assert.ok(payload)
+  const node = payload.nodes[0]
+  assert.ok(node)
+
+  const scene = buildScene(payload, { scale: 1, scrollX: 0, scrollY: 0 }, palette)
+  const name = scene.items.find(
+    (item): item is Extract<SceneItem, { kind: 'text' }> => item.kind === 'text' && item.size === 13,
+  )
+  assert.ok(name)
+  assert.ok(name.text.endsWith('…'), '长名字以省略号收尾')
+  assert.ok(
+    estimateTextWidth(name.text, name.size) <= node.width - 24,
+    '截断后的名字宽度落在内缩边界以内',
+  )
+
+  // 短名字一个字都不动
+  assert.deepEqual(
+    texts(sceneOf(deploy))
+      .filter((text) => text.size === 13)
+      .map((text) => text.text),
+    ['源码构建节点', '上线安装节点', '站点巡检节点', '流水线收尾'],
+  )
 })
 
 test('图元表：三条边都是曲线，两端与箭头落在 0.1.0 的位置', () => {

@@ -4,8 +4,8 @@ import { dirname, join } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath } from 'node:url'
 import { buildPreviewHtml } from '../../src/panel/html.ts'
-import { estimateTextWidth } from '../../src/panel/labels.ts'
 import { buildPreviewPayload } from '../../src/panel/payload.ts'
+import { estimateTextWidth } from '../../src/panel/text.ts'
 import { parse } from '../../src/parser.ts'
 
 const fixtures = join(dirname(fileURLToPath(import.meta.url)), '..', 'fixtures')
