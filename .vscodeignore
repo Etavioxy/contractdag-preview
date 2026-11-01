@@ -5,10 +5,11 @@ plans/**
 docs/**
 scripts/**
 examples/**
-media/preview.ts
+media/**/*.ts
 concepts.md
 spec.md
 ideas.md
+AGENTS.md
 tsconfig.json
 pnpm-lock.yaml
 .gitignore

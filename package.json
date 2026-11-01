@@ -2,9 +2,21 @@
   "name": "contractdag-preview",
   "displayName": "Contract DAG Preview",
   "description": "把契约声明文件画成有向无环图",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "publisher": "contractdag",
-  "private": true,
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "categories": [
+    "Visualization",
+    "Programming Languages"
+  ],
+  "keywords": [
+    "dag",
+    "contract",
+    "dbc",
+    "diagram",
+    "graph"
+  ],
   "type": "module",
   "engines": {
     "vscode": "^1.90.0"
