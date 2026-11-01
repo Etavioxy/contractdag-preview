@@ -28,6 +28,12 @@
 - 预览命令同时挂在 `editor/title` 与 `commandPalette`，两处条件都是 `editorLangId == contract-dag`，与 VS Code 自带的 Markdown 预览同键；`editor/title` 的组是 `navigation@1`。
 - 图标分亮暗两套，落在 `media/icons/`。
 
+## 记录
+
+- 一次激活、一次预览刷新、一次点节点、一条命令都写一行 JSON：`{...payload, event, at}`。
+- 输出通道 `Contract DAG` 始终收一份——面板里的位移、缩放、缺陷数在那查。
+- 文件只在环境变量 `CONTRACTDAG_RECORD_SINK` 指定路径时才写：端到端剧本靠回读这个文件判断「命令有没有发出去、面板收没收到」。用户侧不落盘，否则一份日志会随每次编辑无限长下去。
+
 ## 输入映射
 
 | 输入 | 动作 |
