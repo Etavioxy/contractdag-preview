@@ -14,6 +14,7 @@ AGENTS.md
 tsconfig.json
 tsconfig.lib.json
 crates/**
+target/**
 Cargo.toml
 Cargo.lock
 pnpm-lock.yaml
