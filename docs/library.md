@@ -6,7 +6,7 @@
 
 | 入口 | 产物 | 给谁 |
 |---|---|---|
-| TypeScript | `dist/lib.mjs`、`dist/lib.cjs`、`dist/types` | 扩展、npm 上的 JS 工具 |
+| TypeScript | `dist/lib.mjs`、`dist/lib.cjs`、`dist/types` | 扩展、本地挂进来的 JS 工具 |
 | Rust | `crates/contractdag` | Rust 下游库 |
 | 命令行 | `dist/cli.cjs`（`contractdag`） | 其他语言、脚本 |
 
@@ -61,9 +61,12 @@ contractdag pipeline.contractdag
 
 ## 分发
 
-- npm 包 `@etavioxy/contractdag`：`pnpm add @etavioxy/contractdag`。包里只有 `dist/lib.*`、`dist/cli.cjs`、`dist/types`，加一份 README 与 LICENSE；扩展本体不上 npm。
-- crate `contractdag`：`cargo add contractdag`。与 npm 包同版本号，跟着扩展一起发。
-- 发 npm 前跑 `pnpm package:npm`：重打 bundle、生成声明，再把 `dist` 搬进 `packages/contractdag`。TypeScript 7 目前不为声明文件改写 `.ts` 后缀，`scripts/declarations.mjs` 补这一步，未改写干净就报错。
+- TypeScript 侧不发 npm：`packages/contractdag` 就是可挂的本地包，`pnpm stage:lib` 把 `dist` 搬进去，消费者用 `file:` 依赖挂它。
+  ```json
+  { "dependencies": { "@etavioxy/contractdag": "file:../vscode-contractdag-preview/packages/contractdag" } }
+  ```
+- Rust 侧发 crates.io：`cargo add contractdag`，与扩展同版本号。
+- `stage:lib` 会重打 bundle、生成声明再搬家；TypeScript 7 不为声明文件改写 `.ts` 后缀，`scripts/declarations.mjs` 补这一步，未改写干净就报错。
 - 构建目标是 node20 与 Rust 1.85；更低的版本没有验证过。
 
 ## 兼容承诺

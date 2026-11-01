@@ -103,11 +103,14 @@ artifact = verify-report
 
 ## 不开编辑器也能用
 
-同一个解析器也发成 Node 库和命令行，给不打开 VS Code 的工具用：
+同一个解析器也发成 Node 库和命令行，给不打开 VS Code 的工具用。不发 npm，从仓库挂本地依赖：
 
 ```bash
-npm install @etavioxy/contractdag
-npx contractdag pipeline.contractdag
+pnpm stage:lib    # 把 dist 打进 packages/contractdag
+```
+
+```json
+{ "dependencies": { "@etavioxy/contractdag": "file:../vscode-contractdag-preview/packages/contractdag" } }
 ```
 
 ```js
@@ -116,7 +119,7 @@ import { parseContract } from '@etavioxy/contractdag'
 const { model, diagnostics } = parseContract(source)
 ```
 
-文法不合法时没有 `model`；节点、连线与诊断都带从 0 起的 `range`。命令行退出码：`0` 无缺陷、`1` 有模型但有缺陷、`2` 没有模型。Rust 侧不用命令行，直接用 crate：`cargo add contractdag`。分发、兼容承诺，以及钉住两份实现的语料见 [docs/library.md](docs/library.md)。
+文法不合法时没有 `model`；节点、连线与诊断都带从 0 起的 `range`。装好的包还提供 `contractdag <文件>`：退出码 `0` 无缺陷、`1` 有模型但有缺陷、`2` 没有模型。Rust 侧不用命令行，直接用 crate：`cargo add contractdag`。分发、兼容承诺，以及钉住两份实现的语料见 [docs/library.md](docs/library.md)。
 
 ## 编辑器支持
 

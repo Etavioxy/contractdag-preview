@@ -103,11 +103,14 @@ A drag only counts past 4px, anything shorter is a click — so a quick sweep ac
 
 ## The parser without the editor
 
-The same parser ships as a Node library and a CLI, for tooling that never opens VS Code:
+The same parser ships as a Node library and a CLI, for tooling that never opens VS Code. It is not published to npm; depend on it from a checkout:
 
 ```bash
-npm install @etavioxy/contractdag
-npx contractdag pipeline.contractdag
+pnpm stage:lib    # builds dist into packages/contractdag
+```
+
+```json
+{ "dependencies": { "@etavioxy/contractdag": "file:../vscode-contractdag-preview/packages/contractdag" } }
 ```
 
 ```js
@@ -116,7 +119,7 @@ import { parseContract } from '@etavioxy/contractdag'
 const { model, diagnostics } = parseContract(source)
 ```
 
-`model` is absent when the text does not parse; every node, link and diagnostic carries a 0-based range. The CLI exits `0` when there are no defects, `1` when the model has defects, `2` when it has no model. Rust consumers use the crate instead of the CLI: `cargo add contractdag`. Details, compatibility promises and the conformance corpus that keeps both implementations aligned: [docs/library.md](docs/library.md).
+`model` is absent when the text does not parse; every node, link and diagnostic carries a 0-based range. The installed package also provides `contractdag <file>`; it exits `0` with no defects, `1` when the model has defects, `2` when it has no model. Rust consumers use the crate instead: `cargo add contractdag`. Details, compatibility promises and the conformance corpus that keeps both implementations aligned: [docs/library.md](docs/library.md).
 
 ## Editor support
 

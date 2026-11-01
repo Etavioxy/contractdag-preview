@@ -25,7 +25,7 @@
 
 ### 库入口
 
-- TypeScript 侧：`src/lib.ts` 的依赖闭包里没有 `vscode`，扩展与 npm 消费者走同一份实现。
+- TypeScript 侧：`src/lib.ts` 的依赖闭包里没有 `vscode`，扩展与本地挂进来的 JS 消费者走同一份实现；TypeScript 侧不发 npm，`packages/contractdag` 是可挂的本地包。
 - Rust 侧：`crates/contractdag` 给出同构的模型类型与解析器，下游 Rust 库进程内直接用，不经过子进程。
 - 两份实现由同一份语料钉住：`crates/contractdag/tests/corpus` 的期望 JSON 由 TypeScript 侧生成，`pnpm conformance` 重生成，`pnpm test` 与 `cargo test` 各自对照。改文法要同时改两侧并重生成语料，任一侧漂移都会在自己的测试里失败。
 - 除这两份之外不再有第三处实现；其余语言走命令行 `contractdag <文件>` 输出的 JSON。
