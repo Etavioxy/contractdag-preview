@@ -25,12 +25,11 @@ export function activate(context: vscode.ExtensionContext): void {
   const channel = vscode.window.createOutputChannel('Contract DAG')
   context.subscriptions.push(channel)
 
-  // 沙盒用环境变量指定落脚点；正常运行时落到扩展自己的全局存储，面板里的位移数字才有处可查。
-  const sinkFile =
-    process.env['CONTRACTDAG_RECORD_SINK'] ?? vscode.Uri.joinPath(context.globalStorageUri, 'records.jsonl').fsPath
+  // 记录只进输出通道；端到端剧本要回读时才由环境变量指定落点，用户机器上不长日志文件。
+  const sinkFile = process.env['CONTRACTDAG_RECORD_SINK']
   recorder = createRecorder({
     appendLine: (line) => channel.appendLine(line),
-    sink: createFileSink(sinkFile),
+    sink: sinkFile === undefined ? undefined : createFileSink(sinkFile),
   })
   setPreviewRecorder(recorder)
 
