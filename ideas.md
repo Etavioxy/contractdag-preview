@@ -14,7 +14,7 @@
 
 | 属性 | 值 |
 |------|-----|
-| 目录 | `cyberpunkedgerunners/vscode-contractdag-preview` |
+| 目录 | `vscode-contractdag-preview` |
 | 文件后缀 | `.contractdag` |
 | 语言 ID | `contract-dag` |
 | displayName | `Contract DAG Preview` |
