@@ -14,12 +14,12 @@ AGENTS.md
 tsconfig.json
 tsconfig.lib.json
 crates/**
+packages/**
 target/**
 Cargo.toml
 Cargo.lock
 pnpm-lock.yaml
 .gitignore
-.npmignore
 **/*.map
 dist/test/**
 dist/lib.*

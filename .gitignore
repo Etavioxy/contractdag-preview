@@ -5,3 +5,5 @@ target/
 *.tsbuildinfo
 *.vsix
 examples/.vscode/
+packages/contractdag/dist/
+packages/contractdag/LICENSE

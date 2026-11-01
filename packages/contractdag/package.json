@@ -1,0 +1,44 @@
+{
+  "name": "@etavioxy/contractdag",
+  "version": "0.1.1",
+  "description": "Model types and parser for .contractdag contract declarations",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Etavioxy/contractdag-preview.git",
+    "directory": "packages/contractdag"
+  },
+  "keywords": [
+    "dag",
+    "contract",
+    "dbc",
+    "parser"
+  ],
+  "type": "module",
+  "main": "./dist/lib.cjs",
+  "types": "./dist/types/lib.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/lib.d.ts",
+      "import": "./dist/lib.mjs",
+      "require": "./dist/lib.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "contractdag": "./dist/cli.cjs"
+  },
+  "files": [
+    "dist",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "prepublishOnly": "cd ../.. && pnpm package:npm"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
