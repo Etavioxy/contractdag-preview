@@ -18,7 +18,7 @@ mod tests {
 
     #[test]
     fn deploy_fixture_parses_into_four_nodes_and_three_links() {
-        let source = include_str!("../../../test/fixtures/deploy.contractdag");
+        let source = include_str!("../tests/corpus/deploy.contractdag");
         let result = parse(source);
 
         assert!(result.diagnostics.is_empty());
