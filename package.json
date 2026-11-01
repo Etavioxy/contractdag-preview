@@ -2,7 +2,7 @@
   "name": "contractdag-preview",
   "displayName": "Contract DAG Preview",
   "description": "Preview .contractdag contract declarations as a directed acyclic graph, with structural defects marked.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "publisher": "Etavioxy",
   "license": "MIT",
   "repository": {
