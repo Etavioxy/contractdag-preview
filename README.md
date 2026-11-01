@@ -106,12 +106,12 @@ A drag only counts past 4px, anything shorter is a click — so a quick sweep ac
 The same parser ships as a Node library and a CLI, for tooling that never opens VS Code:
 
 ```bash
-npm install contractdag-preview
+npm install @etavioxy/contractdag
 npx contractdag pipeline.contractdag
 ```
 
 ```js
-import { parseContract } from 'contractdag-preview'
+import { parseContract } from '@etavioxy/contractdag'
 
 const { model, diagnostics } = parseContract(source)
 ```

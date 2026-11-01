@@ -17,7 +17,7 @@
 ## TypeScript
 
 ```ts
-import { parseContract } from 'contractdag-preview'
+import { parseContract } from '@etavioxy/contractdag'
 
 const { model, style, diagnostics } = parseContract(source)
 ```
@@ -29,7 +29,7 @@ const { model, style, diagnostics } = parseContract(source)
 | `diagnostics` | `syntax` 与 `structural` 两层，每条带 `code`、`message`、`range` |
 
 - 入口的依赖闭包只有 `parser`、`defects`、`scan`、`syntax`、`model`，不含 `vscode`：不激活编辑器也能跑，也不必装 VS Code。
-- 包根的 `exports` 指向库，`main` 仍是 `dist/extension.cjs` 给扩展用；两边互不改对方的加载方式。
+- `packages/contractdag` 是发 npm 的那一层，`exports` 指向库；扩展自己的 `main` 仍是 `dist/extension.cjs`，扩展本体不上 npm，两边互不改对方的加载方式。
 - `range` 行与列都从 0 起，与 VS Code 同口径；节点与连线除自身 `range` 外还带 `keyRanges`，逐键定位到声明行。
 - 文法错误不产出模型：模型要么完整要么没有，调用方不用拼半个模型。
 - 结构缺陷不撤模型：环、断头、产物重名、缺 `path`、坏名字都在 `diagnostics` 里，`model` 照常给出。
@@ -61,9 +61,9 @@ contractdag pipeline.contractdag
 
 ## 分发
 
-- npm 包 `contractdag-preview`，与扩展同名同版本：`pnpm add contractdag-preview`。包里只有 `dist/lib.*`、`dist/cli.cjs`、`dist/types`，加上两份 README 与 LICENSE。
+- npm 包 `@etavioxy/contractdag`：`pnpm add @etavioxy/contractdag`。包里只有 `dist/lib.*`、`dist/cli.cjs`、`dist/types`，加一份 README 与 LICENSE；扩展本体不上 npm。
 - crate `contractdag`：`cargo add contractdag`。与 npm 包同版本号，跟着扩展一起发。
-- `prepublishOnly` 重打一遍 bundle 并生成声明；TypeScript 7 目前不为声明文件改写 `.ts` 后缀，`scripts/declarations.mjs` 补这一步，未改写干净就报错。
+- 发 npm 前跑 `pnpm package:npm`：重打 bundle、生成声明，再把 `dist` 搬进 `packages/contractdag`。TypeScript 7 目前不为声明文件改写 `.ts` 后缀，`scripts/declarations.mjs` 补这一步，未改写干净就报错。
 - 构建目标是 node20 与 Rust 1.85；更低的版本没有验证过。
 
 ## 兼容承诺

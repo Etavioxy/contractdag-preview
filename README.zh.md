@@ -106,12 +106,12 @@ artifact = verify-report
 同一个解析器也发成 Node 库和命令行，给不打开 VS Code 的工具用：
 
 ```bash
-npm install contractdag-preview
+npm install @etavioxy/contractdag
 npx contractdag pipeline.contractdag
 ```
 
 ```js
-import { parseContract } from 'contractdag-preview'
+import { parseContract } from '@etavioxy/contractdag'
 
 const { model, diagnostics } = parseContract(source)
 ```
