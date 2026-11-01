@@ -1,0 +1,13 @@
+# 只发库：扩展的 bundle、文法、语言配置与 webview 脚本都不进 npm。
+# 用白名单而不是黑名单：新增的文件不会因为漏写规则被误发出去。
+*
+!dist/
+!dist/lib.mjs
+!dist/lib.cjs
+!dist/cli.cjs
+!dist/types/
+!dist/types/**
+!package.json
+!README.md
+!README.zh.md
+!LICENSE

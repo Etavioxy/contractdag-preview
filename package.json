@@ -33,15 +33,8 @@
       "import": "./dist/lib.mjs",
       "require": "./dist/lib.cjs"
     },
-    "./extension": "./dist/extension.cjs",
     "./package.json": "./package.json"
   },
-  "files": [
-    "dist/lib.mjs",
-    "dist/lib.cjs",
-    "dist/cli.cjs",
-    "dist/types"
-  ],
   "bin": {
     "contractdag": "./dist/cli.cjs"
   },
