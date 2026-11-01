@@ -26,6 +26,21 @@
     "vscode": "^1.90.0"
   },
   "main": "./dist/extension.cjs",
+  "types": "./dist/types/lib.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/lib.d.ts",
+      "import": "./dist/lib.mjs",
+      "require": "./dist/lib.cjs"
+    },
+    "./extension": "./dist/extension.cjs",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "dist/lib.mjs",
+    "dist/lib.cjs",
+    "dist/types"
+  ],
   "activationEvents": [
     "onLanguage:contract-dag"
   ],
@@ -90,6 +105,8 @@
   },
   "scripts": {
     "build": "node scripts/build.mjs",
+    "build:lib": "node scripts/build.mjs && tsc -p tsconfig.lib.json && node scripts/declarations.mjs",
+    "prepublishOnly": "node scripts/build.mjs && tsc -p tsconfig.lib.json && node scripts/declarations.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test test/unit/",
     "e2e": "node scripts/build.mjs && node dist/test/e2e/host.cjs"
