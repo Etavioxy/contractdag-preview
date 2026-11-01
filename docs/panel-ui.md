@@ -18,6 +18,7 @@
 ## 节点
 
 - 节点只有一种尺寸 160×56：名字居中偏上，种类居中偏下，右上角一个角标。
+- 名字超出可用宽度（框宽减去左右各 12 的内缩）就按字符截断，末尾留省略号：框宽固定，长名字宁可少几个字也不越过边框。
 - 正文不进框：框一长高就要顶开层距里的弧线与产物标签，展开还会让整图重排、坐标跳动；正文改由浮层承载，见本文 §正文浮层。
 - 正文按 26 半角列折行，全角与 CJK 记两列；`path` 每行带 `path  ` 前缀，`destination` 保持原句。
 
@@ -37,7 +38,7 @@
 
 ## 常量出处
 
-排版常量在 `payload.ts`（`contentColumns`、`headerHeight`）、`scene.ts`（字号、名字与角标的落点）、`body-layer.ts`（浮层的贴边距与内缩）与 `layout.ts`（`labelHeight`、`labelSpacing`、`padding`），比例、步进、阻尼与密度阈值在 `viewport.ts`（`scaleLimits`、`scaleStep`、`dampingFactor`、`densityThresholds`）。本文的数字与这几处常量同值。
+排版常量在 `payload.ts`（`contentColumns`、`headerHeight`）、`scene.ts`（字号、名字与角标的落点，`nameInset`）、`text.ts`（`halfWidthEm`、`widthSafety`，估宽与截断）、`body-layer.ts`（浮层的贴边距与内缩）与 `layout.ts`（`labelHeight`、`labelSpacing`、`padding`），比例、步进、阻尼与密度阈值在 `viewport.ts`（`scaleLimits`、`scaleStep`、`dampingFactor`、`densityThresholds`）。本文的数字与这几处常量同值。
 
 ## 缩放与滚动的边界
 
