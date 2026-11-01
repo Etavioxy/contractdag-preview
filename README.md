@@ -71,7 +71,7 @@ A `change` node without `path` is not a legal declaration — it touches things,
 
 ## What the graph shows
 
-- **Nodes**: always 160×56, name on top, kind below, a badge in the top-right corner. Body text never enters the frame; click the badge to expand it into a floating card next to the graph that you can select and search
+- **Nodes**: 56 tall and at least 160 wide — a long name widens the box instead of being cut; name on top, kind below, a badge in the top-right corner. Body text never enters the frame; click the badge to expand it into a floating card next to the graph that you can select and search
 - **Links**: curved, arrowheads sitting on the target frame; artifact names land in the gap between two layers, and labels in the same gap never overlap
 - **Zooming out**: below 0.75 the artifact labels go first, below 0.55 the kind goes too; names and borders stay until the minimum
 - **Defects**: edges in a cycle turn red, dangling nodes turn grey, a `change` node missing `path` and a duplicated artifact name each get a badge, and a link to an undeclared node cannot be drawn
