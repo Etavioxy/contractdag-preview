@@ -11,7 +11,7 @@ import { run as runS5 } from './scenarios/s5.ts'
 import { run as runS6 } from './scenarios/s6.ts'
 import { run as runS7 } from './scenarios/s7.ts'
 
-const EXTENSION_ID = 'contractdag.contractdag-preview'
+const EXTENSION_ID = 'Etavioxy.contractdag-preview'
 
 const runners: Record<string, (context: ScenarioContext) => Promise<void>> = {
   s1: runS1,
