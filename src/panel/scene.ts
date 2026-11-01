@@ -1,7 +1,7 @@
 /** 图元表：面板数据 + 视口状态 → 一串待画的矩形、曲线、多边形与文字。纯计算，不碰 DOM。 */
 
 import type { PreviewEdge, PreviewNode, PreviewPayload } from './payload.ts'
-import { truncateToWidth } from './text.ts'
+import { nameSize } from './node-frame.ts'
 import { densityOf, type Density, type Point, type ViewTransform } from './viewport.ts'
 
 /** 画到屏幕上的颜色。webview 从主题变量取，测试给固定值。 */
@@ -86,11 +86,8 @@ export interface Scene {
   items: SceneItem[]
 }
 
-const nameSize = 13
 const smallSize = 11
 const nameRise = 8
-/** 名字左右各留的内缩：留出角标与边框的呼吸，也是截断的可用宽度。 */
-const nameInset = 12
 const kindDrop = 10
 const chevronInset = 12
 const chevronDrop = 14
@@ -195,7 +192,7 @@ function nodeItems(
       kind: 'text',
       x: node.x + node.width / 2,
       y: node.y + payload.headerHeight / 2 - nameRise,
-      text: truncateToWidth(node.name, node.width - nameInset * 2, nameSize),
+      text: node.name,
       size: nameSize,
       color: palette.foreground,
       align: 'middle',

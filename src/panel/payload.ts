@@ -4,6 +4,7 @@ import { labelHeight, labelSpacing, layoutDefaults, layoutLayers, type LayoutDet
 import type { Diagnostic, NodeKind } from '../model.ts'
 import type { Analysis } from '../parser.ts'
 import { assignLabels, type Curve, type SeamPlacement } from './labels.ts'
+import { nodeWidthFor } from './node-frame.ts'
 import { isWideChar } from './text.ts'
 import type { Point } from './viewport.ts'
 
@@ -140,7 +141,12 @@ export function buildPreviewPayload(
    * 标签落点跟着变，道数也可能再涨，所以这里要能反复跑。
    */
   const buildAttempt = (seamRows?: number[]): Attempt => {
-    const detail = layoutLayers(model, { direction: style.direction, gap: style.gap, seamRows })
+    const detail = layoutLayers(model, {
+      direction: style.direction,
+      gap: style.gap,
+      seamRows,
+      nodeWidthOf: nodeWidthFor,
+    })
     const nodes: PreviewNode[] = []
     for (const node of model.nodes) {
       const box = detail.boxes.get(node.name)
@@ -282,14 +288,23 @@ function seamMidpoints(detail: LayoutDetail, vertical: boolean): Array<number | 
     return values.length === 0 ? Number.NaN : Math.min(...values)
   })
 
-  const flowLength = vertical ? layoutDefaults.nodeHeight : layoutDefaults.nodeWidth
+  const flowLengths = detail.layers.map((layer) => {
+    const lengths = layer
+      .map((name) => {
+        const box = detail.boxes.get(name)
+        if (box === undefined) return Number.NaN
+        return vertical ? box.height : box.width
+      })
+      .filter((value) => Number.isFinite(value))
+    return lengths.length === 0 ? layoutDefaults.nodeHeight : Math.max(...lengths)
+  })
   const downstream = tops.length > 1 && (tops[1] as number) >= (tops[0] as number)
 
   return tops.slice(0, -1).map((top, index) => {
     const next = tops[index + 1] ?? top
     // 反转方向时下一层在反向一侧，它的近沿要加一个框长。
-    const near = downstream ? next : next + flowLength
-    return (top + flowLength + near) / 2
+    const near = downstream ? next : next + (flowLengths[index + 1] ?? 0)
+    return (top + (flowLengths[index] ?? 0) + near) / 2
   })
 }
 

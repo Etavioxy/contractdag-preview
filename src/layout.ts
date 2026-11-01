@@ -7,6 +7,8 @@ export interface LayoutOptions {
   direction?: StyleSheet['direction']
   gap?: number
   nodeWidth?: number
+  /** 每个节点的框宽；缺省时一律用 `nodeWidth`。名字长到放不下时靠它撑宽。 */
+  nodeWidthOf?: (name: string) => number
   nodeHeight?: number
   gapCross?: number
   marginX?: number
@@ -29,7 +31,7 @@ export interface LayoutJson {
   boxes: Record<string, NodeBox>
 }
 
-export const layoutDefaults: Required<Omit<LayoutOptions, 'seamRows'>> = {
+export const layoutDefaults: Required<Omit<LayoutOptions, 'seamRows' | 'nodeWidthOf'>> = {
   direction: 'TB',
   // 层间要同时放下弧线、箭头与若干个产物标签：20 太挤，标签会被框压住。
   gap: 48,
@@ -88,42 +90,38 @@ export function layoutLayers(model: ContractModel, options: LayoutOptions = {}):
     return Math.max(settings.gap, labelHeight + (rows - 1) * labelSpacing + 2 * labelPadding)
   }
 
-  // 节点尺寸统一：流动方向与交叉方向的长度都是常量，层距与格位只由 gap 与层内数量决定。
-  const flowOf = (): number => (vertical ? settings.nodeHeight : settings.nodeWidth)
-  const crossOf = (): number => (vertical ? settings.nodeWidth : settings.nodeHeight)
-  const flowExtent = layers.map(() => flowOf())
-  const crossExtent = layers.map(() => crossOf())
+  // 框高统一、框宽按名字给：竖排时宽吃交叉方向，横排时宽吃流动方向。
+  const widthOf = (name: string): number => settings.nodeWidthOf?.(name) ?? settings.nodeWidth
+  // 交叉方向的长度：竖排时是框宽，横排时是框高。
+  const crossOf = (name: string): number => (vertical ? widthOf(name) : settings.nodeHeight)
+  const crossSpanOf = (layer: string[]): number =>
+    layer.reduce((sum, name) => sum + crossOf(name), 0) + Math.max(0, layer.length - 1) * settings.gapCross
+  /** 横排时这一层的流动长度取最宽的框，免得下一层压上来。 */
+  const flowOf = (layer: string[]): number => (vertical ? settings.nodeHeight : Math.max(...layer.map(widthOf)))
 
   const visualLayers = reversed ? [...layers].reverse() : layers
-  const visualFlow = reversed ? [...flowExtent].reverse() : flowExtent
-  const visualCross = reversed ? [...crossExtent].reverse() : crossExtent
+  const visualFlow = visualLayers.map(flowOf)
+  const visualCross = visualLayers.map(crossSpanOf)
   // 缝 i 是第 i 层与第 i+1 层之间；反转方向时缝的顺序也一并反。
   const gaps = Array.from({ length: Math.max(0, layers.length - 1) }, (_, index) => gapOf(index))
   const visualGaps = reversed ? [...gaps].reverse() : gaps
 
-  const widest = Math.max(
-    ...visualLayers.map((layer, index) => layer.length * visualCross[index]! + (layer.length - 1) * settings.gapCross),
-  )
+  const widest = Math.max(...visualCross)
   const crossStart = vertical ? settings.marginX : settings.marginY
   const flowStart = vertical ? settings.marginY : settings.marginX
 
   let flow = flowStart
   for (const [layerIndex, layer] of visualLayers.entries()) {
-    const extent = visualCross[layerIndex]!
-    const layerSpan = layer.length * extent + (layer.length - 1) * settings.gapCross
-    const layerStart = crossStart + (widest - layerSpan) / 2
-    const crossStep = extent + settings.gapCross
+    const span = visualCross[layerIndex] ?? 0
+    let cross = crossStart + (widest - span) / 2
 
-    for (const [order, name] of layer.entries()) {
-      const cross = layerStart + order * crossStep
-      const box = { width: settings.nodeWidth, height: settings.nodeHeight }
-      boxes.set(
-        name,
-        vertical ? { x: cross, y: flow, ...box } : { x: flow, y: cross, ...box },
-      )
+    for (const name of layer) {
+      const box = { width: widthOf(name), height: settings.nodeHeight }
+      boxes.set(name, vertical ? { x: cross, y: flow, ...box } : { x: flow, y: cross, ...box })
+      cross += crossOf(name) + settings.gapCross
     }
 
-    flow += visualFlow[layerIndex]! + (visualGaps[layerIndex] ?? settings.gap)
+    flow += (visualFlow[layerIndex] ?? settings.nodeHeight) + (visualGaps[layerIndex] ?? settings.gap)
   }
 
   return { boxes, layers }

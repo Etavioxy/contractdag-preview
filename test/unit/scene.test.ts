@@ -79,11 +79,12 @@ test('图元表：四个框画在 0.1.0 的同一批坐标上，名字与种类�
   assert.equal(scene.height, 472)
 })
 
-test('图元表：名字超出框宽时截断，宽度不越过左右各 12 的内缩', () => {
+test('图元表：长名字完整画出，框宽撑到放得下，不截断', () => {
+  const long = '这是一个非常长的节点名字会明显超出框的宽度'
   const source = parse(
     [
       '<nodes>',
-      '[这是一个非常长的节点名字会明显超出框的宽度:change]',
+      `[${long}:change]`,
       'path = /srv/app',
       'destination = 做完。',
       '',
@@ -92,26 +93,24 @@ test('图元表：名字超出框宽时截断，宽度不越过左右各 12 的�
       '</nodes>',
       '',
       '<links>',
-      '[[这是一个非常长的节点名字会明显超出框的宽度 -> 收尾]]',
+      `[[${long} -> 收尾]]`,
       'artifact = done.tar',
       '</links>',
     ].join('\n'),
   )
   const payload = buildPreviewPayload(source)
   assert.ok(payload)
-  const node = payload.nodes[0]
+  const node = payload.nodes.find((candidate) => candidate.name === long)
   assert.ok(node)
+  assert.ok(node.width > 160, '框宽按名字撑开')
+  assert.ok(node.width >= estimateTextWidth(long, 13) + 24, '框宽留得下左右各 12 的内缩')
 
   const scene = buildScene(payload, { scale: 1, scrollX: 0, scrollY: 0 }, palette)
   const name = scene.items.find(
-    (item): item is Extract<SceneItem, { kind: 'text' }> => item.kind === 'text' && item.size === 13,
+    (item): item is Extract<SceneItem, { kind: 'text' }> =>
+      item.kind === 'text' && item.size === 13 && item.text === long,
   )
-  assert.ok(name)
-  assert.ok(name.text.endsWith('…'), '长名字以省略号收尾')
-  assert.ok(
-    estimateTextWidth(name.text, name.size) <= node.width - 24,
-    '截断后的名字宽度落在内缩边界以内',
-  )
+  assert.ok(name, '名字原样画出，不带省略号')
 
   // 短名字一个字都不动
   assert.deepEqual(
@@ -119,6 +118,25 @@ test('图元表：名字超出框宽时截断，宽度不越过左右各 12 的�
       .filter((text) => text.size === 13)
       .map((text) => text.text),
     ['源码构建节点', '上线安装节点', '站点巡检节点', '流水线收尾'],
+  )
+})
+
+test('图元表：150 个字符的名字也整串画出', () => {
+  const long = '长'.repeat(150)
+  const source = parse(
+    ['<nodes>', `[${long}:root]`, 'destination = 收尾。', '</nodes>', '<links>', '</links>'].join('\n'),
+  )
+  const payload = buildPreviewPayload(source)
+  assert.ok(payload)
+  const node = payload.nodes[0]
+  assert.ok(node)
+  assert.equal(node.name, long)
+  assert.ok(node.width >= estimateTextWidth(long, 13) + 24)
+
+  const scene = buildScene(payload, { scale: 1, scrollX: 0, scrollY: 0 }, palette)
+  assert.ok(
+    scene.items.some((item) => item.kind === 'text' && item.size === 13 && item.text === long),
+    '整串画出，没有省略号',
   )
 })
 

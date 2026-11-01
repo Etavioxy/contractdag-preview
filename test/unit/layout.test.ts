@@ -121,6 +121,33 @@ test('缝高按道数增长：三道放得下仍是 gap，四道才变高', () =
   assert.equal(gap(6), 89)
 })
 
+test('框宽按名字给：竖排时宽吃交叉方向，横排时宽吃流动方向', () => {
+  const model: ContractModel = { nodes: [node('甲'), node('乙')], links: [link('甲', '乙')] }
+  const widths = (name: string): number => (name === '甲' ? 300 : 200)
+
+  const vertical = layout(model, { nodeWidthOf: widths })
+  assert.equal(vertical.get('甲')?.width, 300)
+  assert.equal(vertical.get('乙')?.width, 200)
+  assert.equal(vertical.get('甲')?.x, 80)
+  assert.equal(vertical.get('乙')?.x, 130, '单框层在整图宽度里居中')
+  assert.equal(vertical.get('乙')?.y, 128)
+
+  const horizontal = layout(model, { direction: 'LR', nodeWidthOf: widths })
+  assert.equal(horizontal.get('乙')?.x, 428, '横排时下一层让开最宽的框')
+  assert.equal(horizontal.get('乙')?.y, 24)
+})
+
+test('框宽按名字给：同层两个框依次排开，不重叠', () => {
+  const model: ContractModel = { nodes: [node('甲'), node('乙')], links: [] }
+  const boxes = layout(model, { nodeWidthOf: (name) => (name === '甲' ? 300 : 200) })
+  const ordered = [...boxes.entries()].sort((left, right) => left[1].x - right[1].x)
+  const first = ordered[0]
+  const second = ordered[1]
+  assert.ok(first !== undefined && second !== undefined)
+  assert.equal(first[1].x, 80, '整层从左边距起排')
+  assert.equal(second[1].x - (first[1].x + first[1].width), 40, '同层间距仍是 gapCross')
+})
+
 test('环上的边不参与分层：先写的那条留下，后写的对边被摘', () => {
   const boxes = layout({ nodes: [node('甲'), node('乙')], links: [link('甲', '乙'), link('乙', '甲')] })
 
