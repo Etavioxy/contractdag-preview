@@ -92,7 +92,7 @@
   "scripts": {
     "build": "node scripts/build.mjs",
     "build:lib": "node scripts/build.mjs && tsc -p tsconfig.lib.json && node scripts/declarations.mjs",
-    "package:npm": "pnpm build:lib && node scripts/npm-package.mjs",
+    "stage:lib": "pnpm build:lib && node scripts/stage-lib.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test test/unit/",
     "test:rust": "cargo test",

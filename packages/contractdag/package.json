@@ -1,6 +1,7 @@
 {
   "name": "@etavioxy/contractdag",
   "version": "0.1.1",
+  "private": true,
   "description": "Model types and parser for .contractdag contract declarations",
   "license": "MIT",
   "repository": {
@@ -34,11 +35,5 @@
   ],
   "engines": {
     "node": ">=20"
-  },
-  "scripts": {
-    "prepublishOnly": "cd ../.. && pnpm package:npm"
-  },
-  "publishConfig": {
-    "access": "public"
   }
 }
