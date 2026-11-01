@@ -39,8 +39,12 @@
   "files": [
     "dist/lib.mjs",
     "dist/lib.cjs",
+    "dist/cli.cjs",
     "dist/types"
   ],
+  "bin": {
+    "contractdag": "./dist/cli.cjs"
+  },
   "activationEvents": [
     "onLanguage:contract-dag"
   ],

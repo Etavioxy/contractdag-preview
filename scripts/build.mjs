@@ -6,6 +6,7 @@ const entries = [
   { entry: 'src/extension.ts', outfile: 'dist/extension.cjs', platform: 'node', format: 'cjs', external: ['vscode'] },
   { entry: 'src/lib.ts', outfile: 'dist/lib.mjs', platform: 'node', format: 'esm', external: [] },
   { entry: 'src/lib.ts', outfile: 'dist/lib.cjs', platform: 'node', format: 'cjs', external: [] },
+  { entry: 'src/cli.ts', outfile: 'dist/cli.cjs', platform: 'node', format: 'cjs', external: [] },
   { entry: 'test/e2e/suite.ts', outfile: 'dist/test/e2e/suite.cjs', platform: 'node', format: 'cjs', external: ['vscode'] },
   { entry: 'test/e2e/host.ts', outfile: 'dist/test/e2e/host.cjs', platform: 'node', format: 'cjs', external: ['@vscode/test-electron'] },
   { entry: 'media/preview.ts', outfile: 'dist/media/preview.js', platform: 'browser', format: 'iife', external: [] },
