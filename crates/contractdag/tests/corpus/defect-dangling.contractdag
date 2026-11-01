@@ -1,0 +1,19 @@
+<nodes>
+
+[甲:change]
+path = /srv/dangling/a
+destination = 交出去了。
+
+[乙:root]
+destination = 出口。
+
+[丙:change]
+path = /srv/dangling/c
+destination = 放下了，没人接。
+
+</nodes>
+
+<links>
+[[甲 -> 乙]]
+artifact = handed
+</links>

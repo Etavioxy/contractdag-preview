@@ -1,0 +1,11 @@
+<nodes>
+
+[甲:root]
+destination = 出口。
+
+</nodes>
+
+<links>
+[[甲 -> 未声明]]
+artifact = to-nowhere
+</links>

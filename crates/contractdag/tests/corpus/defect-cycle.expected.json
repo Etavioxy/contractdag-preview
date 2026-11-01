@@ -1,0 +1,143 @@
+{
+  "model": {
+    "nodes": [
+      {
+        "name": "甲",
+        "kind": "change",
+        "path": [
+          "/srv/cycle/a"
+        ],
+        "destination": [
+          "转一圈。"
+        ],
+        "range": {
+          "startLine": 2,
+          "startCharacter": 0,
+          "endLine": 2,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "path": {
+            "startLine": 3,
+            "startCharacter": 0,
+            "endLine": 3,
+            "endCharacter": 19
+          },
+          "destination": {
+            "startLine": 4,
+            "startCharacter": 0,
+            "endLine": 4,
+            "endCharacter": 18
+          }
+        }
+      },
+      {
+        "name": "乙",
+        "kind": "change",
+        "path": [
+          "/srv/cycle/b"
+        ],
+        "destination": [
+          "再转一圈。"
+        ],
+        "range": {
+          "startLine": 6,
+          "startCharacter": 0,
+          "endLine": 6,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "path": {
+            "startLine": 7,
+            "startCharacter": 0,
+            "endLine": 7,
+            "endCharacter": 19
+          },
+          "destination": {
+            "startLine": 8,
+            "startCharacter": 0,
+            "endLine": 8,
+            "endCharacter": 19
+          }
+        }
+      }
+    ],
+    "links": [
+      {
+        "from": "甲",
+        "to": "乙",
+        "artifacts": [
+          "forward"
+        ],
+        "properties": {},
+        "range": {
+          "startLine": 13,
+          "startCharacter": 0,
+          "endLine": 13,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "artifact": {
+            "startLine": 14,
+            "startCharacter": 0,
+            "endLine": 14,
+            "endCharacter": 18
+          }
+        }
+      },
+      {
+        "from": "乙",
+        "to": "甲",
+        "artifacts": [
+          "backward"
+        ],
+        "properties": {},
+        "range": {
+          "startLine": 16,
+          "startCharacter": 0,
+          "endLine": 16,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "artifact": {
+            "startLine": 17,
+            "startCharacter": 0,
+            "endLine": 17,
+            "endCharacter": 19
+          }
+        }
+      }
+    ]
+  },
+  "style": {
+    "direction": "TB",
+    "gap": 48,
+    "classDefs": {},
+    "classes": [],
+    "linkStyles": []
+  },
+  "diagnostics": [
+    {
+      "layer": "structural",
+      "code": "cycle",
+      "message": "依赖边接成环：甲 -> 乙",
+      "range": {
+        "startLine": 13,
+        "startCharacter": 0,
+        "endLine": 13,
+        "endCharacter": 10
+      }
+    },
+    {
+      "layer": "structural",
+      "code": "cycle",
+      "message": "依赖边接成环：乙 -> 甲",
+      "range": {
+        "startLine": 16,
+        "startCharacter": 0,
+        "endLine": 16,
+        "endCharacter": 10
+      }
+    }
+  ]
+}

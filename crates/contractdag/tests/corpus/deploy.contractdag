@@ -1,0 +1,42 @@
+<nodes>
+
+[源码构建节点:change]
+path        = /srv/app/build
+destination = [
+  构建包 `build.tar` 已产出，校验和已记录。
+  只写 path 里的位置。
+]
+
+[上线安装节点:change]
+path = [
+  /srv/app/build
+  /srv/app/config
+]
+destination = [
+  两个服务探活连续 3 次成功。
+  配置目录只增不改。
+]
+
+[站点巡检节点:query]
+path        = /srv/app/live
+destination = [
+  对外三个页面各抓取 3 次，全部返回 200 且内容哈希一致。
+  抓取并发 8 路，对同一站点不超过每秒 2 次请求。
+]
+
+[流水线收尾:root]
+destination = 部署流水线完成：`env-ready` 已落盘，巡检报告已归档。
+
+</nodes>
+
+<links>
+[[源码构建节点 -> 上线安装节点]]
+artifact = build.tar
+
+[[上线安装节点 -> 站点巡检节点]]
+artifact = env-ready
+target   = /srv/app/live
+
+[[站点巡检节点 -> 流水线收尾]]
+artifact = verify-report
+</links>

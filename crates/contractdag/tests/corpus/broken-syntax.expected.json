@@ -1,0 +1,22 @@
+{
+  "style": {
+    "direction": "TB",
+    "gap": 48,
+    "classDefs": {},
+    "classes": [],
+    "linkStyles": []
+  },
+  "diagnostics": [
+    {
+      "layer": "syntax",
+      "code": "unknown-region",
+      "message": "区名写错了：<node>，这里应该是 <nodes>",
+      "range": {
+        "startLine": 0,
+        "startCharacter": 0,
+        "endLine": 0,
+        "endCharacter": 6
+      }
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+[package]
+name = "contractdag"
+version = "0.1.1"
+edition = "2024"
+rust-version = "1.85"
+license = "MIT"
+description = "Model types and parser for .contractdag contract declarations"
+repository = "https://github.com/Etavioxy/contractdag-preview"
+keywords = ["dag", "contract", "dbc", "parser"]
+categories = ["parser-implementations"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+serde_json = "1"

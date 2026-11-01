@@ -106,6 +106,8 @@
     "prepublishOnly": "node scripts/build.mjs && tsc -p tsconfig.lib.json && node scripts/declarations.mjs",
     "typecheck": "tsc --noEmit",
     "test": "node --test test/unit/",
+    "test:rust": "cargo test",
+    "conformance": "node scripts/conformance.mjs",
     "e2e": "node scripts/build.mjs && node dist/test/e2e/host.cjs"
   },
   "devDependencies": {

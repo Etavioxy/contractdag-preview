@@ -1,0 +1,194 @@
+{
+  "model": {
+    "nodes": [
+      {
+        "name": "甲",
+        "kind": "change",
+        "path": [
+          "/srv/merge/a"
+        ],
+        "destination": [
+          "第一路已交付。"
+        ],
+        "range": {
+          "startLine": 2,
+          "startCharacter": 0,
+          "endLine": 2,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "path": {
+            "startLine": 3,
+            "startCharacter": 0,
+            "endLine": 3,
+            "endCharacter": 19
+          },
+          "destination": {
+            "startLine": 4,
+            "startCharacter": 0,
+            "endLine": 4,
+            "endCharacter": 21
+          }
+        }
+      },
+      {
+        "name": "乙",
+        "kind": "change",
+        "path": [
+          "/srv/merge/b"
+        ],
+        "destination": [
+          "第二路已交付。"
+        ],
+        "range": {
+          "startLine": 6,
+          "startCharacter": 0,
+          "endLine": 6,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "path": {
+            "startLine": 7,
+            "startCharacter": 0,
+            "endLine": 7,
+            "endCharacter": 19
+          },
+          "destination": {
+            "startLine": 8,
+            "startCharacter": 0,
+            "endLine": 8,
+            "endCharacter": 21
+          }
+        }
+      },
+      {
+        "name": "丙",
+        "kind": "change",
+        "path": [
+          "/srv/merge/join"
+        ],
+        "destination": [
+          "两路都并进来了。"
+        ],
+        "range": {
+          "startLine": 10,
+          "startCharacter": 0,
+          "endLine": 10,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "path": {
+            "startLine": 11,
+            "startCharacter": 0,
+            "endLine": 11,
+            "endCharacter": 22
+          },
+          "destination": {
+            "startLine": 12,
+            "startCharacter": 0,
+            "endLine": 12,
+            "endCharacter": 22
+          }
+        }
+      },
+      {
+        "name": "丁",
+        "kind": "root",
+        "path": [],
+        "destination": [
+          "汇合后落到出口。"
+        ],
+        "range": {
+          "startLine": 14,
+          "startCharacter": 0,
+          "endLine": 14,
+          "endCharacter": 8
+        },
+        "keyRanges": {
+          "destination": {
+            "startLine": 15,
+            "startCharacter": 0,
+            "endLine": 15,
+            "endCharacter": 22
+          }
+        }
+      }
+    ],
+    "links": [
+      {
+        "from": "甲",
+        "to": "丙",
+        "artifacts": [
+          "from-a"
+        ],
+        "properties": {},
+        "range": {
+          "startLine": 20,
+          "startCharacter": 0,
+          "endLine": 20,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "artifact": {
+            "startLine": 21,
+            "startCharacter": 0,
+            "endLine": 21,
+            "endCharacter": 17
+          }
+        }
+      },
+      {
+        "from": "乙",
+        "to": "丙",
+        "artifacts": [
+          "from-b"
+        ],
+        "properties": {},
+        "range": {
+          "startLine": 23,
+          "startCharacter": 0,
+          "endLine": 23,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "artifact": {
+            "startLine": 24,
+            "startCharacter": 0,
+            "endLine": 24,
+            "endCharacter": 17
+          }
+        }
+      },
+      {
+        "from": "丙",
+        "to": "丁",
+        "artifacts": [
+          "merged"
+        ],
+        "properties": {},
+        "range": {
+          "startLine": 26,
+          "startCharacter": 0,
+          "endLine": 26,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "artifact": {
+            "startLine": 27,
+            "startCharacter": 0,
+            "endLine": 27,
+            "endCharacter": 17
+          }
+        }
+      }
+    ]
+  },
+  "style": {
+    "direction": "TB",
+    "gap": 48,
+    "classDefs": {},
+    "classes": [],
+    "linkStyles": []
+  },
+  "diagnostics": []
+}

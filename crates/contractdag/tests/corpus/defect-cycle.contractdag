@@ -1,0 +1,19 @@
+<nodes>
+
+[甲:change]
+path = /srv/cycle/a
+destination = 转一圈。
+
+[乙:change]
+path = /srv/cycle/b
+destination = 再转一圈。
+
+</nodes>
+
+<links>
+[[甲 -> 乙]]
+artifact = forward
+
+[[乙 -> 甲]]
+artifact = backward
+</links>

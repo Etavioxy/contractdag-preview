@@ -1,0 +1,72 @@
+{
+  "model": {
+    "nodes": [
+      {
+        "name": "甲",
+        "kind": "root",
+        "path": [],
+        "destination": [
+          "出口。"
+        ],
+        "range": {
+          "startLine": 2,
+          "startCharacter": 0,
+          "endLine": 2,
+          "endCharacter": 8
+        },
+        "keyRanges": {
+          "destination": {
+            "startLine": 3,
+            "startCharacter": 0,
+            "endLine": 3,
+            "endCharacter": 17
+          }
+        }
+      }
+    ],
+    "links": [
+      {
+        "from": "甲",
+        "to": "未声明",
+        "artifacts": [
+          "to-nowhere"
+        ],
+        "properties": {},
+        "range": {
+          "startLine": 8,
+          "startCharacter": 0,
+          "endLine": 8,
+          "endCharacter": 12
+        },
+        "keyRanges": {
+          "artifact": {
+            "startLine": 9,
+            "startCharacter": 0,
+            "endLine": 9,
+            "endCharacter": 21
+          }
+        }
+      }
+    ]
+  },
+  "style": {
+    "direction": "TB",
+    "gap": 48,
+    "classDefs": {},
+    "classes": [],
+    "linkStyles": []
+  },
+  "diagnostics": [
+    {
+      "layer": "structural",
+      "code": "unknown-node",
+      "message": "连线引用了未声明的节点：未声明",
+      "range": {
+        "startLine": 8,
+        "startCharacter": 0,
+        "endLine": 8,
+        "endCharacter": 12
+      }
+    }
+  ]
+}

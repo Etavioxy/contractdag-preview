@@ -1,0 +1,29 @@
+<nodes>
+
+[甲:change]
+path = /srv/merge/a
+destination = 第一路已交付。
+
+[乙:change]
+path = /srv/merge/b
+destination = 第二路已交付。
+
+[丙:change]
+path = /srv/merge/join
+destination = 两路都并进来了。
+
+[丁:root]
+destination = 汇合后落到出口。
+
+</nodes>
+
+<links>
+[[甲 -> 丙]]
+artifact = from-a
+
+[[乙 -> 丙]]
+artifact = from-b
+
+[[丙 -> 丁]]
+artifact = merged
+</links>

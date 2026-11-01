@@ -1,0 +1,132 @@
+{
+  "model": {
+    "nodes": [
+      {
+        "name": "甲",
+        "kind": "change",
+        "path": [
+          "/srv/dangling/a"
+        ],
+        "destination": [
+          "交出去了。"
+        ],
+        "range": {
+          "startLine": 2,
+          "startCharacter": 0,
+          "endLine": 2,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "path": {
+            "startLine": 3,
+            "startCharacter": 0,
+            "endLine": 3,
+            "endCharacter": 22
+          },
+          "destination": {
+            "startLine": 4,
+            "startCharacter": 0,
+            "endLine": 4,
+            "endCharacter": 19
+          }
+        }
+      },
+      {
+        "name": "乙",
+        "kind": "root",
+        "path": [],
+        "destination": [
+          "出口。"
+        ],
+        "range": {
+          "startLine": 6,
+          "startCharacter": 0,
+          "endLine": 6,
+          "endCharacter": 8
+        },
+        "keyRanges": {
+          "destination": {
+            "startLine": 7,
+            "startCharacter": 0,
+            "endLine": 7,
+            "endCharacter": 17
+          }
+        }
+      },
+      {
+        "name": "丙",
+        "kind": "change",
+        "path": [
+          "/srv/dangling/c"
+        ],
+        "destination": [
+          "放下了，没人接。"
+        ],
+        "range": {
+          "startLine": 9,
+          "startCharacter": 0,
+          "endLine": 9,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "path": {
+            "startLine": 10,
+            "startCharacter": 0,
+            "endLine": 10,
+            "endCharacter": 22
+          },
+          "destination": {
+            "startLine": 11,
+            "startCharacter": 0,
+            "endLine": 11,
+            "endCharacter": 22
+          }
+        }
+      }
+    ],
+    "links": [
+      {
+        "from": "甲",
+        "to": "乙",
+        "artifacts": [
+          "handed"
+        ],
+        "properties": {},
+        "range": {
+          "startLine": 16,
+          "startCharacter": 0,
+          "endLine": 16,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "artifact": {
+            "startLine": 17,
+            "startCharacter": 0,
+            "endLine": 17,
+            "endCharacter": 17
+          }
+        }
+      }
+    ]
+  },
+  "style": {
+    "direction": "TB",
+    "gap": 48,
+    "classDefs": {},
+    "classes": [],
+    "linkStyles": []
+  },
+  "diagnostics": [
+    {
+      "layer": "structural",
+      "code": "dangling-node",
+      "message": "非根节点没有出边，产物交不出去：丙",
+      "range": {
+        "startLine": 9,
+        "startCharacter": 0,
+        "endLine": 9,
+        "endCharacter": 10
+      }
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+<nodes>
+
+[甲:change]
+path = /srv/fork/root
+destination = 分叉前的那份产物已就绪。
+
+[乙:change]
+path = /srv/fork/left
+destination = 左支做完了。
+
+[丙:query]
+path = /srv/fork/right
+destination = 右支读完了。
+
+[丁:root]
+destination = 两支都回到出口。
+
+</nodes>
+
+<links>
+[[甲 -> 乙]]
+artifact = left-input
+
+[[甲 -> 丙]]
+artifact = right-input
+
+[[乙 -> 丁]]
+artifact = left-done
+
+[[丙 -> 丁]]
+artifact = right-done
+</links>

@@ -1,0 +1,7 @@
+<node>
+
+[甲:change]
+path = /srv/broken
+destination = 区名写错了。
+
+</node>

@@ -1,0 +1,216 @@
+{
+  "model": {
+    "nodes": [
+      {
+        "name": "甲",
+        "kind": "change",
+        "path": [
+          "/srv/fork/root"
+        ],
+        "destination": [
+          "分叉前的那份产物已就绪。"
+        ],
+        "range": {
+          "startLine": 2,
+          "startCharacter": 0,
+          "endLine": 2,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "path": {
+            "startLine": 3,
+            "startCharacter": 0,
+            "endLine": 3,
+            "endCharacter": 21
+          },
+          "destination": {
+            "startLine": 4,
+            "startCharacter": 0,
+            "endLine": 4,
+            "endCharacter": 26
+          }
+        }
+      },
+      {
+        "name": "乙",
+        "kind": "change",
+        "path": [
+          "/srv/fork/left"
+        ],
+        "destination": [
+          "左支做完了。"
+        ],
+        "range": {
+          "startLine": 6,
+          "startCharacter": 0,
+          "endLine": 6,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "path": {
+            "startLine": 7,
+            "startCharacter": 0,
+            "endLine": 7,
+            "endCharacter": 21
+          },
+          "destination": {
+            "startLine": 8,
+            "startCharacter": 0,
+            "endLine": 8,
+            "endCharacter": 20
+          }
+        }
+      },
+      {
+        "name": "丙",
+        "kind": "query",
+        "path": [
+          "/srv/fork/right"
+        ],
+        "destination": [
+          "右支读完了。"
+        ],
+        "range": {
+          "startLine": 10,
+          "startCharacter": 0,
+          "endLine": 10,
+          "endCharacter": 9
+        },
+        "keyRanges": {
+          "path": {
+            "startLine": 11,
+            "startCharacter": 0,
+            "endLine": 11,
+            "endCharacter": 22
+          },
+          "destination": {
+            "startLine": 12,
+            "startCharacter": 0,
+            "endLine": 12,
+            "endCharacter": 20
+          }
+        }
+      },
+      {
+        "name": "丁",
+        "kind": "root",
+        "path": [],
+        "destination": [
+          "两支都回到出口。"
+        ],
+        "range": {
+          "startLine": 14,
+          "startCharacter": 0,
+          "endLine": 14,
+          "endCharacter": 8
+        },
+        "keyRanges": {
+          "destination": {
+            "startLine": 15,
+            "startCharacter": 0,
+            "endLine": 15,
+            "endCharacter": 22
+          }
+        }
+      }
+    ],
+    "links": [
+      {
+        "from": "甲",
+        "to": "乙",
+        "artifacts": [
+          "left-input"
+        ],
+        "properties": {},
+        "range": {
+          "startLine": 20,
+          "startCharacter": 0,
+          "endLine": 20,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "artifact": {
+            "startLine": 21,
+            "startCharacter": 0,
+            "endLine": 21,
+            "endCharacter": 21
+          }
+        }
+      },
+      {
+        "from": "甲",
+        "to": "丙",
+        "artifacts": [
+          "right-input"
+        ],
+        "properties": {},
+        "range": {
+          "startLine": 23,
+          "startCharacter": 0,
+          "endLine": 23,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "artifact": {
+            "startLine": 24,
+            "startCharacter": 0,
+            "endLine": 24,
+            "endCharacter": 22
+          }
+        }
+      },
+      {
+        "from": "乙",
+        "to": "丁",
+        "artifacts": [
+          "left-done"
+        ],
+        "properties": {},
+        "range": {
+          "startLine": 26,
+          "startCharacter": 0,
+          "endLine": 26,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "artifact": {
+            "startLine": 27,
+            "startCharacter": 0,
+            "endLine": 27,
+            "endCharacter": 20
+          }
+        }
+      },
+      {
+        "from": "丙",
+        "to": "丁",
+        "artifacts": [
+          "right-done"
+        ],
+        "properties": {},
+        "range": {
+          "startLine": 29,
+          "startCharacter": 0,
+          "endLine": 29,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "artifact": {
+            "startLine": 30,
+            "startCharacter": 0,
+            "endLine": 30,
+            "endCharacter": 21
+          }
+        }
+      }
+    ]
+  },
+  "style": {
+    "direction": "TB",
+    "gap": 48,
+    "classDefs": {},
+    "classes": [],
+    "linkStyles": []
+  },
+  "diagnostics": []
+}

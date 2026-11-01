@@ -1,0 +1,206 @@
+{
+  "model": {
+    "nodes": [
+      {
+        "name": "源码构建节点",
+        "kind": "change",
+        "path": [
+          "/srv/app/build"
+        ],
+        "destination": [
+          "构建包 `build.tar` 已产出，校验和已记录。",
+          "只写 path 里的位置。"
+        ],
+        "range": {
+          "startLine": 2,
+          "startCharacter": 0,
+          "endLine": 2,
+          "endCharacter": 15
+        },
+        "keyRanges": {
+          "path": {
+            "startLine": 3,
+            "startCharacter": 0,
+            "endLine": 3,
+            "endCharacter": 28
+          },
+          "destination": {
+            "startLine": 4,
+            "startCharacter": 0,
+            "endLine": 4,
+            "endCharacter": 15
+          }
+        }
+      },
+      {
+        "name": "上线安装节点",
+        "kind": "change",
+        "path": [
+          "/srv/app/build",
+          "/srv/app/config"
+        ],
+        "destination": [
+          "两个服务探活连续 3 次成功。",
+          "配置目录只增不改。"
+        ],
+        "range": {
+          "startLine": 9,
+          "startCharacter": 0,
+          "endLine": 9,
+          "endCharacter": 15
+        },
+        "keyRanges": {
+          "path": {
+            "startLine": 10,
+            "startCharacter": 0,
+            "endLine": 10,
+            "endCharacter": 8
+          },
+          "destination": {
+            "startLine": 14,
+            "startCharacter": 0,
+            "endLine": 14,
+            "endCharacter": 15
+          }
+        }
+      },
+      {
+        "name": "站点巡检节点",
+        "kind": "query",
+        "path": [
+          "/srv/app/live"
+        ],
+        "destination": [
+          "对外三个页面各抓取 3 次，全部返回 200 且内容哈希一致。",
+          "抓取并发 8 路，对同一站点不超过每秒 2 次请求。"
+        ],
+        "range": {
+          "startLine": 19,
+          "startCharacter": 0,
+          "endLine": 19,
+          "endCharacter": 14
+        },
+        "keyRanges": {
+          "path": {
+            "startLine": 20,
+            "startCharacter": 0,
+            "endLine": 20,
+            "endCharacter": 27
+          },
+          "destination": {
+            "startLine": 21,
+            "startCharacter": 0,
+            "endLine": 21,
+            "endCharacter": 15
+          }
+        }
+      },
+      {
+        "name": "流水线收尾",
+        "kind": "root",
+        "path": [],
+        "destination": [
+          "部署流水线完成：`env-ready` 已落盘，巡检报告已归档。"
+        ],
+        "range": {
+          "startLine": 26,
+          "startCharacter": 0,
+          "endLine": 26,
+          "endCharacter": 12
+        },
+        "keyRanges": {
+          "destination": {
+            "startLine": 27,
+            "startCharacter": 0,
+            "endLine": 27,
+            "endCharacter": 46
+          }
+        }
+      }
+    ],
+    "links": [
+      {
+        "from": "源码构建节点",
+        "to": "上线安装节点",
+        "artifacts": [
+          "build.tar"
+        ],
+        "properties": {},
+        "range": {
+          "startLine": 32,
+          "startCharacter": 0,
+          "endLine": 32,
+          "endCharacter": 20
+        },
+        "keyRanges": {
+          "artifact": {
+            "startLine": 33,
+            "startCharacter": 0,
+            "endLine": 33,
+            "endCharacter": 20
+          }
+        }
+      },
+      {
+        "from": "上线安装节点",
+        "to": "站点巡检节点",
+        "artifacts": [
+          "env-ready"
+        ],
+        "properties": {
+          "target": "/srv/app/live"
+        },
+        "range": {
+          "startLine": 35,
+          "startCharacter": 0,
+          "endLine": 35,
+          "endCharacter": 20
+        },
+        "keyRanges": {
+          "artifact": {
+            "startLine": 36,
+            "startCharacter": 0,
+            "endLine": 36,
+            "endCharacter": 20
+          },
+          "target": {
+            "startLine": 37,
+            "startCharacter": 0,
+            "endLine": 37,
+            "endCharacter": 24
+          }
+        }
+      },
+      {
+        "from": "站点巡检节点",
+        "to": "流水线收尾",
+        "artifacts": [
+          "verify-report"
+        ],
+        "properties": {},
+        "range": {
+          "startLine": 39,
+          "startCharacter": 0,
+          "endLine": 39,
+          "endCharacter": 19
+        },
+        "keyRanges": {
+          "artifact": {
+            "startLine": 40,
+            "startCharacter": 0,
+            "endLine": 40,
+            "endCharacter": 24
+          }
+        }
+      }
+    ]
+  },
+  "style": {
+    "direction": "TB",
+    "gap": 48,
+    "classDefs": {},
+    "classes": [],
+    "linkStyles": []
+  },
+  "diagnostics": []
+}
