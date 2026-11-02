@@ -141,11 +141,13 @@ export function readPalette(root: HTMLElement): ScenePalette {
     description: read('--vscode-descriptionForeground', '#999999'),
     nodeFill: read('--vscode-editorWidget-background', '#232323'),
     nodeStroke: read('--vscode-editorWidget-border', '#555555'),
-    highlight: read('--vscode-focusBorder', '#4a9eff'),
+    highlight: read('--vscode-editorCursor-foreground', '#4a9eff'),
+    highlightFill: read('--vscode-list-activeSelectionBackground', '#2a2d2e'),
+    highlightForeground: read('--vscode-list-activeSelectionForeground', '#ffffff'),
+    hoverFill: read('--vscode-list-hoverBackground', '#2a2d2e'),
     edge: read('--vscode-editorLineNumber-foreground', '#666666'),
     background: read('--vscode-editor-background', '#1e1e1e'),
     error: read('--vscode-errorForeground', '#f14c4c'),
-    muted: read('--vscode-disabledForeground', '#777777'),
   }
 }
 

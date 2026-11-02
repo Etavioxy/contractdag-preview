@@ -95,10 +95,10 @@ test('缩放步进按倍率乘，不越过上下限', () => {
   assert.equal(stepScale(0.55, false), 0.5)
 })
 
-test('密度按比例分档：边标签先收，再收种类；展开的正文不收', () => {
+test('密度按比例分档：边标签先收，再收标注；展开的正文不收', () => {
   assert.equal(densityOf(1), 'edge-label')
   assert.equal(densityOf(0.8), 'edge-label')
-  assert.equal(densityOf(0.6), 'kind')
+  assert.equal(densityOf(0.6), 'annotation')
   assert.equal(densityOf(0.5), 'name')
 })
 

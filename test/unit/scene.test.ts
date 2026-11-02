@@ -17,10 +17,12 @@ const palette: ScenePalette = {
   nodeFill: '#232323',
   nodeStroke: '#555',
   highlight: '#4a9eff',
+  highlightFill: '#2a2d2e',
+  highlightForeground: '#ffffff',
+  hoverFill: '#2a2d2e',
   edge: '#666',
   background: '#1e1e1e',
   error: '#f14c4c',
-  muted: '#777',
 }
 
 function sceneOf(source: ReturnType<typeof parse>, expanded: ReadonlySet<string> = new Set()): Scene {
@@ -182,12 +184,12 @@ test('图元表：比例越小越早收掉小字，角标与边框始终画', ()
 
   const full = scene(0.9)
   assert.ok(texts(full).some((text) => text.text === 'build.tar'), '高比例下有边标签')
-  assert.ok(texts(full).some((text) => text.text === 'change'), '高比例下有种类')
+  assert.ok(texts(full).some((text) => text.text === 'change'), '高比例下有标注')
 
-  const kindOnly = scene(0.6)
-  assert.ok(!texts(kindOnly).some((text) => text.text === 'build.tar'), '低比例先收边标签')
-  assert.ok(texts(kindOnly).some((text) => text.text === 'change'), '还剩种类')
-  assert.ok(texts(kindOnly).some((text) => text.text === '▸'), '角标任何时候都在')
+  const annotationOnly = scene(0.6)
+  assert.ok(!texts(annotationOnly).some((text) => text.text === 'build.tar'), '低比例先收边标签')
+  assert.ok(texts(annotationOnly).some((text) => text.text === 'change'), '还剩标注')
+  assert.ok(texts(annotationOnly).some((text) => text.text === '▸'), '角标任何时候都在')
 
   const nameOnly = scene(0.5)
   assert.ok(!texts(nameOnly).some((text) => text.text === 'change'), '再低就只留名字')
@@ -229,31 +231,13 @@ test('图元表：展开只换角标，框与边一个不动，正文不进画�
   )
 })
 
-test('图元表：缺陷标在图上——环边标红、断头转灰、缺 path 与重名带角标', () => {
+test('图元表：缺陷标在图上——环边标红、产物重名带角标', () => {
   const cycleScene = sceneOf(parse(readFileSync(join(fixtures, 'defect-cycle.contractdag'), 'utf8')))
   const curves = cycleScene.items.filter(
     (item): item is Extract<SceneItem, { kind: 'curve' }> => item.kind === 'curve',
   )
   assert.equal(curves.length, 2)
   assert.deepEqual(curves.map((curve) => curve.stroke), ['#f14c4c', '#f14c4c'])
-
-  const dangling = parse(readFileSync(join(fixtures, 'defect-dangling.contractdag'), 'utf8'))
-  const danglingPayload = buildPreviewPayload(dangling)
-  assert.ok(danglingPayload)
-  const dead = danglingPayload.nodes.find((node) => node.name === '丙')
-  assert.ok(dead)
-  const deadBox = sceneOf(dangling).items.find(
-    (item): item is Extract<SceneItem, { kind: 'rect' }> =>
-      item.kind === 'rect' && item.x === dead.x && item.y === dead.y,
-  )
-  assert.equal(deadBox?.stroke, '#777')
-
-  const missingScene = sceneOf(parse(readFileSync(join(fixtures, 'defect-missing-path.contractdag'), 'utf8')))
-  const missingBadges = missingScene.items.filter(
-    (item): item is Extract<SceneItem, { kind: 'badge' }> => item.kind === 'badge',
-  )
-  assert.equal(missingBadges.length, 1)
-  assert.deepEqual([missingBadges[0]?.x, missingBadges[0]?.y], [90, 34])
 
   const duplicateScene = sceneOf(parse(readFileSync(join(fixtures, 'defect-duplicate-artifact.contractdag'), 'utf8')))
   const duplicateBadges = duplicateScene.items.filter(
@@ -262,13 +246,14 @@ test('图元表：缺陷标在图上——环边标红、断头转灰、缺 path
   assert.equal(duplicateBadges.length, 1)
 })
 
-test('图元表：低比例下缺陷角标照画，不随字一起收', () => {
-  const payload = buildPreviewPayload(parse(readFileSync(join(fixtures, 'defect-missing-path.contractdag'), 'utf8')))
+test('图元表：产物重名的角标跟着产物标签一起收', () => {
+  const payload = buildPreviewPayload(parse(readFileSync(join(fixtures, 'defect-duplicate-artifact.contractdag'), 'utf8')))
   assert.ok(payload)
   const scene = buildScene(payload, { scale: 0.5, scrollX: 0, scrollY: 0 }, palette)
 
   assert.equal(scene.density, 'name')
-  assert.equal(scene.items.filter((item) => item.kind === 'badge').length, 1)
+  // 产物重名的角标钉在产物标签旁，标签被收掉时它也跟着收：角标指的就是那个标签。
+  assert.equal(scene.items.filter((item) => item.kind === 'badge').length, 0)
 })
 
 test('图元表：多产物的标签沿弧线依次排开', () => {

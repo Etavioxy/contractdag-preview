@@ -10,13 +10,18 @@ export interface ScenePalette {
   description: string
   nodeFill: string
   nodeStroke: string
+  /** 当前节点（光标所在行或回跳落点）的描边。 */
   highlight: string
+  /** 当前节点的填充。 */
+  highlightFill: string
+  /** 当前节点的文字：比常规前景更亮。 */
+  highlightForeground: string
+  /** 指针悬停时的填充。 */
+  hoverFill: string
   edge: string
   background: string
   /** 结构缺陷的标记色。 */
   error: string
-  /** 断头节点：结构上还在，产物交不出去。 */
-  muted: string
 }
 
 export type SceneAlign = 'start' | 'middle' | 'end'
@@ -88,7 +93,7 @@ export interface Scene {
 
 const smallSize = 11
 const nameRise = 8
-const kindDrop = 10
+const annotationDrop = 10
 const chevronInset = 12
 const chevronDrop = 14
 
@@ -173,9 +178,12 @@ function nodeItems(
   palette: ScenePalette,
 ): SceneItem[] {
   const highlighted = node.name === payload.highlight
-  // 断头节点：产物交不出去，框走灰；高亮优先于缺陷，好让回跳看得见落点。
-  const dangling = node.defects.includes('dangling-node')
-  const stroke = highlighted ? palette.highlight : dangling ? palette.muted : (node.stroke ?? palette.nodeStroke)
+  const hovered = !highlighted && payload.hover === node.name
+  // 两者落在同一个节点时按当前节点画：高亮压过悬停，描边不在一粗一细之间打架。
+  const stroke = highlighted || hovered ? palette.highlight : (node.stroke ?? palette.nodeStroke)
+  const fill =
+    node.fill ?? (highlighted ? palette.highlightFill : hovered ? palette.hoverFill : palette.nodeFill)
+
   const items: SceneItem[] = [
     {
       kind: 'rect',
@@ -184,9 +192,9 @@ function nodeItems(
       width: node.width,
       height: node.height,
       radius: 6,
-      fill: node.fill ?? palette.nodeFill,
+      fill,
       stroke,
-      lineWidth: highlighted ? 3 : 1.5,
+      lineWidth: highlighted ? 3 : hovered ? 2 : 1.5,
     },
     {
       kind: 'text',
@@ -194,34 +202,38 @@ function nodeItems(
       y: node.y + payload.headerHeight / 2 - nameRise,
       text: node.name,
       size: nameSize,
-      color: palette.foreground,
-      align: 'middle',
-      baseline: 'middle',
-    },
-    {
-      kind: 'text',
-      x: node.x + node.width / 2,
-      y: node.y + payload.headerHeight / 2 + kindDrop,
-      text: node.kind,
-      size: smallSize,
-      color: palette.description,
-      align: 'middle',
-      baseline: 'middle',
-    },
-    {
-      kind: 'text',
-      x: node.x + node.width - chevronInset,
-      y: node.y + chevronDrop,
-      text: node.expanded ? '▾' : '▸',
-      size: smallSize,
-      color: palette.description,
+      color: highlighted ? palette.highlightForeground : palette.foreground,
       align: 'middle',
       baseline: 'middle',
     },
   ]
 
-  if (density === 'name') items.splice(2, 1)
-  // 变更节点缺 path：角标钉在左上角，不挡名字与角标。
+  // 标注是自由文本，写了才画；低比例下先收掉，给名字留位置。
+  if (density !== 'name' && node.annotation !== '') {
+    items.push({
+      kind: 'text',
+      x: node.x + node.width / 2,
+      y: node.y + payload.headerHeight / 2 + annotationDrop,
+      text: node.annotation,
+      size: smallSize,
+      color: highlighted ? palette.highlightForeground : palette.description,
+      align: 'middle',
+      baseline: 'middle',
+    })
+  }
+
+  items.push({
+    kind: 'text',
+    x: node.x + node.width - chevronInset,
+    y: node.y + chevronDrop,
+    text: node.expanded ? '▾' : '▸',
+    size: smallSize,
+    color: highlighted ? palette.highlightForeground : palette.description,
+    align: 'middle',
+    baseline: 'middle',
+  })
+
+  // 缺 path：角标钉在左上角，不挡名字与角标。
   if (node.defects.includes('missing-path')) items.push(badge(node.x + 10, node.y + 10, palette))
   return items
 }

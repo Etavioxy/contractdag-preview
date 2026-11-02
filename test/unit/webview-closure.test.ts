@@ -15,10 +15,12 @@ test('图元表不把布局引擎带进 webview：运行期依赖不碰 layout.t
     visited.add(file)
 
     const source = readFileSync(file, 'utf8')
-    for (const [, specifier] of source.matchAll(/^import\s+(?!type\b)[^;]*?from\s+'([^']+)'/gm)) {
+    for (const match of source.matchAll(/^import\s+(?!type\b)[^;]*?from\s+'([^']+)'/gm)) {
+      const specifier = match[1]
+      if (specifier === undefined) continue
       assert.ok(!specifier.includes('d3-dag'), `${file} 依赖了 d3-dag，webview 只该收画图用的数据`)
       assert.ok(!specifier.endsWith('/layout.ts'), `${file} 依赖了布局，坐标由宿主算好下发`)
-      if (specifier?.startsWith('.')) pending.push(fileURLToPath(new URL(specifier, `file://${file}`)))
+      if (specifier.startsWith('.')) pending.push(fileURLToPath(new URL(specifier, `file://${file}`)))
     }
   }
 

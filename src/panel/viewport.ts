@@ -105,13 +105,13 @@ export function stepScale(scale: number, forward: boolean): number {
  * 小于这个比例就把那一层细节收掉，免得出现 6px 的字。
  * 展开的契约正文不参与分档：展开是显式动作，收掉就等于点不动。
  */
-export const densityThresholds = { edgeLabel: 0.75, kind: 0.55 } as const
+export const densityThresholds = { edgeLabel: 0.75, annotation: 0.55 } as const
 
-export type Density = 'name' | 'kind' | 'edge-label'
+export type Density = 'name' | 'annotation' | 'edge-label'
 
 /** 当前比例下还该画到哪一层。 */
 export function densityOf(scale: number): Density {
   if (scale >= densityThresholds.edgeLabel) return 'edge-label'
-  if (scale >= densityThresholds.kind) return 'kind'
+  if (scale >= densityThresholds.annotation) return 'annotation'
   return 'name'
 }

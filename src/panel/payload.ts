@@ -1,7 +1,7 @@
 /** 面板要的数据：节点框、边的两端与标签位置、画布尺寸。纯计算，不碰 VSCode。 */
 
 import { labelHeight, labelSpacing, layoutDefaults, layoutLayers, type LayoutDetail } from '../layout.ts'
-import type { Diagnostic, NodeKind } from '../model.ts'
+import type { Diagnostic } from '../model.ts'
 import type { Analysis } from '../parser.ts'
 import { assignLabels, type Curve, type SeamPlacement } from './labels.ts'
 import { nodeWidthFor } from './node-frame.ts'
@@ -25,7 +25,8 @@ const maxLabelRounds = 8
 
 export interface PreviewNode {
   name: string
-  kind: NodeKind
+  /** 冒号后的标注；空串就是没写，框里不画第二行。 */
+  annotation: string
   line: number
   x: number
   y: number
@@ -86,7 +87,9 @@ export interface PreviewPayload {
   height: number
   font: string
   highlight: string | null
-  /** 折叠态高度：名字与种类画在这个高度里。 */
+  /** 指针悬停的节点：webview 侧维护，宿主不填。 */
+  hover?: string | null
+  /** 折叠态高度：名字与标注画在这个高度里。 */
   headerHeight: number
   /** 结构缺陷原文：图里标一遍，清单里再列一遍。 */
   diagnostics: Diagnostic[]
@@ -130,10 +133,10 @@ export function buildPreviewPayload(
     classProperties.set(assignment.node, { ...(classProperties.get(assignment.node) ?? {}), ...defined })
   }
 
-  // 正文不再进框：展开只决定浮层里有没有内容，不影响任何框的高度与坐标。
+  // 正文不再进框：每个节点的正文都先折好，固定展开与悬停临时展开共用同一份。
   const linesOf = new Map<string, string[]>()
   for (const node of model.nodes) {
-    if (expanded.has(node.name)) linesOf.set(node.name, contractLines(node.path, node.destination))
+    linesOf.set(node.name, contractLines(node.path, node.destination))
   }
 
   /**
@@ -152,10 +155,10 @@ export function buildPreviewPayload(
       const box = detail.boxes.get(node.name)
       if (box === undefined) continue
       const properties = classProperties.get(node.name) ?? {}
-      const isExpanded = linesOf.has(node.name)
+      const isExpanded = expanded.has(node.name)
       nodes.push({
         name: node.name,
-        kind: node.kind,
+        annotation: node.annotation,
         line: node.range.startLine,
         ...box,
         expanded: isExpanded,

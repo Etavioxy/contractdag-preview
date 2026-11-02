@@ -254,13 +254,16 @@ test('有结构缺陷照常出图，缺陷落在对应的边上', () => {
       '',
       '[乙:root]',
       'destination = 收尾。',
+      '',
+      '[丙:root]',
+      'destination = 收尾。',
       '</nodes>',
       '',
       '<links>',
       '[[甲 -> 乙]]',
       'artifact = x',
       '',
-      '[[甲 -> 乙]]',
+      '[[甲 -> 丙]]',
       'artifact = x',
       '</links>',
     ].join('\n'),
@@ -276,18 +279,10 @@ test('有结构缺陷照常出图，缺陷落在对应的边上', () => {
   assert.equal(payload.diagnostics[0]?.layer, 'structural')
 })
 
-test('结构缺陷不再撤图：环、断头、缺 path 都照常出图并带标记', () => {
+test('结构缺陷不再撤图：环上的边照常出图并带标记', () => {
   const cycle = buildPreviewPayload(parse(readFileSync(join(fixtures, 'defect-cycle.contractdag'), 'utf8')))
   assert.ok(cycle)
   assert.deepEqual(cycle.edges.map((edge) => edge.defects), [['cycle'], ['cycle']])
-
-  const dangling = buildPreviewPayload(parse(readFileSync(join(fixtures, 'defect-dangling.contractdag'), 'utf8')))
-  assert.ok(dangling)
-  assert.deepEqual(dangling.nodes.find((node) => node.name === '丙')?.defects, ['dangling-node'])
-
-  const missing = buildPreviewPayload(parse(readFileSync(join(fixtures, 'defect-missing-path.contractdag'), 'utf8')))
-  assert.ok(missing)
-  assert.deepEqual(missing.nodes.find((node) => node.name === '甲')?.defects, ['missing-path'])
 })
 
 test('文法错误时不产出新图', () => {

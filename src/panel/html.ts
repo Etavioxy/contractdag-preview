@@ -23,7 +23,8 @@ export function buildPreviewHtml(options: PreviewHtmlOptions): string {
   #controls button:hover { background: var(--vscode-toolbar-hoverBackground, #3a3a3a); }
   #stale { position: fixed; left: 8px; right: 8px; bottom: 8px; margin: 0; padding: 6px 8px; border-radius: 4px; background: var(--vscode-inputValidation-errorBackground, #3a1d1d); color: var(--vscode-errorForeground, #f66); font-size: 12px; }
   #bodies { position: absolute; inset: 0; pointer-events: none; }
-  .body-card { position: absolute; width: 260px; max-height: 60vh; overflow: auto; pointer-events: auto; padding: 6px 8px; border-radius: 6px; background: var(--vscode-editorWidget-background, #232323); border: 1px solid var(--vscode-editorWidget-border, #555); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); }
+  .body-card { position: absolute; width: 260px; max-height: 60vh; overflow: auto; pointer-events: auto; padding: 6px 8px; border-radius: 6px; background: var(--vscode-editorWidget-background, #232323); border: 1px solid var(--vscode-editorWidget-border, #555); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); opacity: 0; transition: opacity 120ms ease; }
+  .body-card.is-visible { opacity: 1; }
   .body-title { margin-bottom: 4px; font-size: 11px; color: var(--vscode-descriptionForeground, #999); }
   .body-text { margin: 0; font-family: var(--vscode-editor-font-family, monospace); font-size: 11px; line-height: 1.5; white-space: pre; }
   #hud { position: fixed; left: 12px; bottom: 12px; padding: 3px 8px; border-radius: 6px; font-size: 11px; pointer-events: none; color: var(--vscode-descriptionForeground, #999); background: var(--vscode-editorWidget-background, #232323); border: 1px solid var(--vscode-editorWidget-border, #555); }

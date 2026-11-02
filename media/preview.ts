@@ -7,12 +7,14 @@ import { buildScene, type Scene } from '../src/panel/scene.ts'
 import {
   anchorScroll,
   approach,
+  clampScale,
   clampScroll,
   finiteOffset,
   fitScale,
   isSettled,
   panBy,
   scaleEpsilon,
+  scaleStep,
   scaledSize,
   stepScale,
   type Point,
@@ -36,6 +38,7 @@ interface ZoomRun {
 let current: PreviewPayload | null = null
 let scene: Scene | null = null
 let firstRender = true
+let hoverName: string | null = null
 
 let scale = 1
 let scroll: Point = { x: 0, y: 0 }
@@ -103,11 +106,7 @@ function applyView(): void {
   canvas.dataset['density'] = scene.density
 
   // 正文在 DOM 层：跟随相机摆放，但不进画布，框也不会被撑高。
-  bodies.update(
-    current.nodes.filter((node) => node.expanded),
-    camera(),
-    viewportSize(),
-  )
+  bodies.update(current.nodes, hoverName, camera(), viewportSize())
   hud.set(`${current.nodes.length} 节点 · ${current.edges.length} 边 · ${Math.round(scale * 100)}%`)
 }
 
@@ -175,6 +174,16 @@ function applyHighlight(name: string | null): void {
   postState()
 }
 
+/** 悬停等价于临时展开：浮层临时出现，节点描边同时提亮；移开即收。 */
+function applyHover(name: string | null): void {
+  if (current === null || hoverName === name) return
+  hoverName = name
+  current = { ...current, hover: name }
+  viewport.style.cursor = name === null ? '' : 'pointer'
+  applyView()
+  postState()
+}
+
 function postState(): void {
   const expanded = current?.nodes.filter((node) => node.expanded).map((node) => node.name) ?? []
   const contractLines =
@@ -227,27 +236,31 @@ viewport.addEventListener(
   'wheel',
   (event: WheelEvent) => {
     event.preventDefault()
-    if (event.ctrlKey || event.metaKey) {
-      const rect = viewport.getBoundingClientRect()
-      requestZoom(stepScale(zoom?.toScale ?? scale, event.deltaY < 0), {
-        x: event.clientX - rect.left,
-        y: event.clientY - rect.top,
-      })
-      return
-    }
-
-    // 触控板自带惯性与阻尼，这里再逼近一层会变成双份惯性：滑不停、也停不准。
+    // 滚轮就是缩放：以指针为锚，直接跟手，不叠一层缓动。
     const step = event.deltaMode === 1 ? event.deltaY * 16 : event.deltaY
     wheelStats.count += 1
     wheelStats.deltaX = event.deltaX
     wheelStats.deltaY = event.deltaY
     zoom = null
-    scroll = panBy(
-      scroll,
-      { dx: event.shiftKey ? step : event.deltaX, dy: event.shiftKey ? 0 : step },
-      viewportSize(),
-      scaledSize(contentSize(), scale),
-    )
+
+    if (event.shiftKey) {
+      scroll = panBy(scroll, { dx: step, dy: 0 }, viewportSize(), scaledSize(contentSize(), scale))
+    } else if (event.ctrlKey || event.metaKey) {
+      scroll = panBy(scroll, { dx: 0, dy: step }, viewportSize(), scaledSize(contentSize(), scale))
+    } else {
+      const next = clampScale(scale * Math.pow(scaleStep, -step / 100))
+      const rect = viewport.getBoundingClientRect()
+      const anchor = { x: event.clientX - rect.left, y: event.clientY - rect.top }
+      const contentX = (scroll.x + anchor.x) / scale
+      const contentY = (scroll.y + anchor.y) / scale
+      scale = next
+      scroll = clampScroll(
+        { x: contentX * next - anchor.x, y: contentY * next - anchor.y },
+        viewportSize(),
+        scaledSize(contentSize(), next),
+      )
+    }
+
     applyView()
     scheduleReport()
   },
@@ -266,7 +279,12 @@ viewport.addEventListener('pointerdown', (event: PointerEvent) => {
 })
 
 viewport.addEventListener('pointermove', (event: PointerEvent) => {
-  if (drag === null || event.pointerId !== drag.pointerId) return
+  if (drag === null || event.pointerId !== drag.pointerId) {
+    // 没在拖动时才判悬停：拖动途中浮层跟着乱跳，读者看不清自己在拖什么。
+    const hit = current === null ? null : hitTest(current, contentPoint(event.clientX, event.clientY))
+    applyHover(hit?.kind === 'node' ? hit.name : null)
+    return
+  }
   drag.track = movePointer(drag.track, event.clientX, event.clientY)
   if (!isDrag(drag.track)) return
 
@@ -300,6 +318,7 @@ function endDrag(event: PointerEvent): void {
 
 viewport.addEventListener('pointerup', endDrag)
 viewport.addEventListener('pointercancel', endDrag)
+viewport.addEventListener('pointerleave', () => applyHover(null))
 
 document.getElementById('zoom-in')?.addEventListener('click', () => {
   requestZoom(stepScale(zoom?.toScale ?? scale, true), anchorAtCenter())
