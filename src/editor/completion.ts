@@ -1,7 +1,7 @@
-/** 补全：按光标所在区给候选，节点名取自文档里已经写出的表头。 */
+/** 补全：只在行首给候选，候选集按光标所在区算。 */
 
 import type { Analysis } from '../parser.ts'
-import { nodeNamesOf } from '../scan.ts'
+import type { ScannedLine } from '../scan.ts'
 
 export interface CompletionSuggestion {
   label: string
@@ -9,49 +9,46 @@ export interface CompletionSuggestion {
   insertText: string
 }
 
-const kinds = ['change', 'query', 'root']
 const nodeKeys = ['path', 'destination']
 const styleKeywords = ['direction', 'gap', 'font', 'classDef', 'class', 'linkStyle']
-const directions = ['TB', 'BT', 'LR', 'RL']
-const regionHeaders = ['<nodes>', '<links>', '<style>']
+const regionHeaders = ['<nodes>', '<links>', '<style>', '</nodes>', '</links>', '</style>']
 
 function suggestion(label: string, detail: string): CompletionSuggestion {
   return { label, detail, insertText: label }
 }
 
+/** 行首才补：光标前除缩进外只有刚敲下的 `<` 时也算行首。 */
 export function completeAt(analysis: Analysis, line: number, character: number): CompletionSuggestion[] {
-  const scanned = analysis.lines
-  const current = scanned[line]
+  const current = analysis.lines[line]
   if (current === undefined) return []
-  if (current.role === 'value-item' || current.role === 'value-close' || current.role === 'comment') return []
+  if (current.role === 'comment' || current.role === 'value-item' || current.role === 'value-close') return []
 
-  const prefix = current.text.slice(0, character).trimStart()
-  const names = nodeNamesOf(scanned)
-  const picksNodeNames = (): boolean => prefix.startsWith('[')
+  const prefix = current.text.slice(0, character).trim()
+  if (prefix !== '' && !prefix.startsWith('<')) return []
 
-  if (current.role === 'link-head') return names.map((name) => suggestion(name, '节点'))
-  if (current.role === 'node-head') return kinds.map((kind) => suggestion(kind, '种类'))
+  if (prefix.startsWith('<')) {
+    return regionHeaders.filter((header) => header.startsWith(prefix)).map((header) => suggestion(header, '区标签'))
+  }
 
   switch (current.region) {
     case 'nodes':
-      return prefix.startsWith('[') ? kinds.map((kind) => suggestion(kind, '种类')) : nodeKeys.map((key) => suggestion(key, '节点键'))
+      return nodeKeys.map((key) => suggestion(key, '节点键'))
     case 'links':
-      return picksNodeNames()
-        ? names.map((name) => suggestion(name, '节点'))
-        : [suggestion('artifact', '连线键，必填')]
+      return linkKeys(analysis.lines).map((key) => suggestion(key, '连线键'))
     case 'style':
-      return styleRegion(prefix, names)
+      return styleKeywords.map((keyword) => suggestion(keyword, '样式关键字'))
     default:
-      return regionHeaders.map((header) => suggestion(header, '区'))
+      return []
   }
 }
 
-function styleRegion(prefix: string, names: string[]): CompletionSuggestion[] {
-  const space = prefix.search(/\s/)
-  if (space === -1) return styleKeywords.map((keyword) => suggestion(keyword, '样式关键字'))
-
-  const keyword = prefix.slice(0, space)
-  if (keyword === 'direction') return directions.map((direction) => suggestion(direction, '方向'))
-  if (keyword === 'class') return names.map((name) => suggestion(name, '节点'))
-  return []
+/** 连线区的键：`artifact` 加本文件里已经写过的自由键。 */
+function linkKeys(scanned: ScannedLine[]): string[] {
+  const keys = ['artifact']
+  for (const line of scanned) {
+    if (line.role !== 'key-value' || line.region !== 'links') continue
+    const key = line.text.slice(0, line.text.indexOf('=')).trim()
+    if (key !== '' && !keys.includes(key)) keys.push(key)
+  }
+  return keys
 }

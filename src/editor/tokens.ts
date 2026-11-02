@@ -2,7 +2,7 @@
 
 import type { Analysis } from '../parser.ts'
 import type { ScannedLine } from '../scan.ts'
-import { parseKeyValue, parseLinkHead, parseNodeHead } from '../syntax.ts'
+import { parseKeyValue, parseNodeHead } from '../syntax.ts'
 
 export const tokenTypes = ['keyword', 'class', 'property', 'string', 'comment', 'enumMember', 'operator'] as const
 
@@ -42,6 +42,7 @@ export function collectTokens(analysis: Analysis): TokenSpan[] {
         addNodeHead(spans, line)
         break
       case 'link-head':
+      case 'link-head-continue':
         addLinkHead(spans, line)
         break
       case 'key-value':
@@ -72,25 +73,30 @@ function push(spans: TokenSpan[], candidate: TokenSpan | undefined): void {
 function addNodeHead(spans: TokenSpan[], line: ScannedLine): void {
   const head = parseNodeHead(line.trimmed)
   if (!head.ok) return
-  const { name, kind } = head.value
+  const { name, annotation } = head.value
   push(spans, span(line, at(line, name), name.length, 'class', true))
+  if (annotation === '') return
 
   const colon = line.text.lastIndexOf(':')
   const closing = line.text.lastIndexOf(']')
   if (colon <= line.indent || closing < colon) return
-  const kindText = line.text.slice(colon + 1, closing)
-  if (kindText.trim() !== kind) return
-  const leading = kindText.length - kindText.trimStart().length
-  push(spans, span(line, colon + 1 + leading, kind.length, 'enumMember'))
+  const annotationText = line.text.slice(colon + 1, closing)
+  if (annotationText.trim() !== annotation) return
+  const leading = annotationText.length - annotationText.trimStart().length
+  push(spans, span(line, colon + 1 + leading, annotation.length, 'string'))
 }
 
+/** 表头可以跨行，逐行把名字段标出来：`[[`、`]]` 与 `->` 留给标点。 */
 function addLinkHead(spans: TokenSpan[], line: ScannedLine): void {
-  const head = parseLinkHead(line.trimmed)
-  if (!head.ok) return
-  const { from, to } = head.value
-  const fromStart = at(line, from)
-  push(spans, span(line, fromStart, from.length, 'class'))
-  push(spans, span(line, at(line, to, fromStart + from.length), to.length, 'class'))
+  let searchFrom = line.indent
+  for (const part of line.trimmed.split('->')) {
+    const name = part.replace(/^\[\[/, '').replace(/\]\]$/, '').trim()
+    if (name === '') continue
+    const start = line.text.indexOf(name, searchFrom)
+    if (start === -1) continue
+    push(spans, span(line, start, name.length, 'class'))
+    searchFrom = start + name.length
+  }
 }
 
 function addKeyValue(spans: TokenSpan[], line: ScannedLine): void {
