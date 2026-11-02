@@ -3,7 +3,7 @@
     "nodes": [
       {
         "name": "甲",
-        "kind": "root",
+        "annotation": "root",
         "path": [],
         "destination": [
           "出口。"

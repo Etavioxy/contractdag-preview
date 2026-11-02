@@ -3,7 +3,7 @@
     "nodes": [
       {
         "name": "甲",
-        "kind": "change",
+        "annotation": "change",
         "path": [
           "/srv/merge/a"
         ],
@@ -33,7 +33,7 @@
       },
       {
         "name": "乙",
-        "kind": "change",
+        "annotation": "change",
         "path": [
           "/srv/merge/b"
         ],
@@ -63,7 +63,7 @@
       },
       {
         "name": "丙",
-        "kind": "change",
+        "annotation": "change",
         "path": [
           "/srv/merge/join"
         ],
@@ -93,7 +93,7 @@
       },
       {
         "name": "丁",
-        "kind": "root",
+        "annotation": "root",
         "path": [],
         "destination": [
           "汇合后落到出口。"

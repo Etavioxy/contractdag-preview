@@ -14,7 +14,7 @@ test('Rust 语料与样例逐字一致，期望 JSON 与 TypeScript 的解析结
   const names = readdirSync(fixtures)
     .filter((name) => name.endsWith('.contractdag'))
     .sort()
-  assert.ok(names.length >= 9, '样例不够，检查 test/fixtures')
+  assert.ok(names.length >= 7, '样例不够，检查 test/fixtures')
 
   for (const name of names) {
     const source = readFileSync(join(fixtures, name), 'utf8')

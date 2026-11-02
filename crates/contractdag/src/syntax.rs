@@ -1,6 +1,6 @@
 //! 行级词法：把一行文本认成区标签、表头、键值行或样式命令，不持有状态。
 
-use crate::model::{NodeKind, SourceRange};
+use crate::model::SourceRange;
 use std::collections::BTreeMap;
 
 pub enum Parsed<T> {
@@ -75,7 +75,8 @@ pub fn region_close(text: &str) -> Option<&str> {
 
 pub struct NodeHead {
     pub name: String,
-    pub kind: NodeKind,
+    /// 冒号后的标注：可以是任何文字，只显示，不判定。
+    pub annotation: String,
 }
 
 pub fn parse_node_head(text: &str) -> Parsed<NodeHead> {
@@ -83,40 +84,29 @@ pub fn parse_node_head(text: &str) -> Parsed<NodeHead> {
     if !trimmed.starts_with('[') || !trimmed.ends_with(']') || trimmed.starts_with("[[") {
         return bad(
             "bad-node-head",
-            String::from("节点头要写成 [名字] 或 [名字:种类]"),
+            String::from("节点头要写成 [名字] 或 [名字:标注]"),
         );
     }
     let inner = &trimmed[1..trimmed.len() - 1];
-    let (name, kind_text) = match inner.rfind(':') {
+    let (name, annotation) = match inner.rfind(':') {
         Some(colon) => (js_trim(&inner[..colon]), js_trim(&inner[colon + 1..])),
         None => (js_trim(inner), ""),
     };
     if name.is_empty() {
         return bad("empty-name", String::from("节点没有名字"));
     }
-    let kind = match kind_text {
-        "" => NodeKind::Change,
-        "change" => NodeKind::Change,
-        "query" => NodeKind::Query,
-        "root" => NodeKind::Root,
-        other => {
-            return bad(
-                "bad-kind",
-                format!("种类只有 change / query / root，写成了 {other}"),
-            );
-        }
-    };
     ok(NodeHead {
         name: String::from(name),
-        kind,
+        annotation: String::from(annotation),
     })
 }
 
 pub struct LinkHead {
-    pub from: String,
-    pub to: String,
+    /// 表头里按 `->` 切出的名字序列：相邻两名一条边。
+    pub names: Vec<String>,
 }
 
+/// 表头可以来自多行，调用方先把它们按空格拼成一段再交进来。
 pub fn parse_link_head(text: &str) -> Parsed<LinkHead> {
     let trimmed = js_trim(text);
     if !trimmed.starts_with("[[") || !trimmed.ends_with("]]") {
@@ -126,19 +116,17 @@ pub fn parse_link_head(text: &str) -> Parsed<LinkHead> {
         );
     }
     let inner = &trimmed[2..trimmed.len() - 2];
-    let parts: Vec<&str> = inner.split("->").collect();
-    if parts.len() != 2 {
-        return bad("bad-link-head", String::from("连线表头要有且只有一个 ->"));
+    let names: Vec<String> = inner.split("->").map(|part| String::from(js_trim(part))).collect();
+    if names.len() < 2 {
+        return bad(
+            "bad-link-head",
+            String::from("连线表头至少要两个名字，用 -> 连起来"),
+        );
     }
-    let from = js_trim(parts[0]);
-    let to = js_trim(parts[1]);
-    if from.is_empty() || to.is_empty() {
-        return bad("bad-link-head", String::from("连线两端都要有节点名"));
+    if names.iter().any(String::is_empty) {
+        return bad("bad-link-head", String::from("-> 两边都要有节点名"));
     }
-    ok(LinkHead {
-        from: String::from(from),
-        to: String::from(to),
-    })
+    ok(LinkHead { names })
 }
 
 pub struct KeyValue {
@@ -234,7 +222,12 @@ fn parse_properties(text: &str) -> Parsed<BTreeMap<String, String>> {
     ok(properties)
 }
 
-fn split_endpoints(text: &str) -> Parsed<LinkHead> {
+struct Endpoints {
+    from: String,
+    to: String,
+}
+
+fn split_endpoints(text: &str) -> Parsed<Endpoints> {
     let parts: Vec<&str> = text.split("->").collect();
     if parts.len() != 2 {
         return bad("bad-style-value", String::from("端点要写成 源 -> 目的"));
@@ -244,7 +237,7 @@ fn split_endpoints(text: &str) -> Parsed<LinkHead> {
     if from.is_empty() || to.is_empty() {
         return bad("bad-style-value", String::from("端点两端都要有节点名"));
     }
-    ok(LinkHead {
+    ok(Endpoints {
         from: String::from(from),
         to: String::from(to),
     })

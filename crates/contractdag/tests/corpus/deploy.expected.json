@@ -3,7 +3,7 @@
     "nodes": [
       {
         "name": "源码构建节点",
-        "kind": "change",
+        "annotation": "change",
         "path": [
           "/srv/app/build"
         ],
@@ -34,7 +34,7 @@
       },
       {
         "name": "上线安装节点",
-        "kind": "change",
+        "annotation": "change",
         "path": [
           "/srv/app/build",
           "/srv/app/config"
@@ -66,7 +66,7 @@
       },
       {
         "name": "站点巡检节点",
-        "kind": "query",
+        "annotation": "query",
         "path": [
           "/srv/app/live"
         ],
@@ -97,7 +97,7 @@
       },
       {
         "name": "流水线收尾",
-        "kind": "root",
+        "annotation": "root",
         "path": [],
         "destination": [
           "部署流水线完成：`env-ready` 已落盘，巡检报告已归档。"

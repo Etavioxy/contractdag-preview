@@ -16,7 +16,7 @@ test('样板文件解析成四条节点、三条连线、零诊断', () => {
   assert.equal(analysis.model?.nodes.length, 4)
   assert.equal(analysis.model?.links.length, 3)
   assert.deepEqual(
-    analysis.model?.nodes.map((node) => [node.name, node.kind]),
+    analysis.model?.nodes.map((node) => [node.name, node.annotation]),
     [
       ['源码构建节点', 'change'],
       ['上线安装节点', 'change'],
@@ -34,25 +34,25 @@ test('dump 出的 JSON 与 docs/concrete-insight.md 的模型一致', () => {
     nodes: [
       {
         name: '源码构建节点',
-        kind: 'change',
+        annotation: 'change',
         path: ['/srv/app/build'],
         destination: ['构建包 `build.tar` 已产出，校验和已记录。', '只写 path 里的位置。'],
       },
       {
         name: '上线安装节点',
-        kind: 'change',
+        annotation: 'change',
         path: ['/srv/app/build', '/srv/app/config'],
         destination: ['两个服务探活连续 3 次成功。', '配置目录只增不改。'],
       },
       {
         name: '站点巡检节点',
-        kind: 'query',
+        annotation: 'query',
         path: ['/srv/app/live'],
         destination: ['对外三个页面各抓取 3 次，全部返回 200 且内容哈希一致。', '抓取并发 8 路，对同一站点不超过每秒 2 次请求。'],
       },
       {
         name: '流水线收尾',
-        kind: 'root',
+        annotation: 'root',
         path: [],
         destination: ['部署流水线完成：`env-ready` 已落盘，巡检报告已归档。'],
       },
@@ -222,34 +222,16 @@ const broken: Array<{ name: string; source: string; code: string; line: number }
     line: 1,
   },
   {
-    name: '种类写错',
-    source: ['<nodes>', '[甲:task]', 'destination = 做完。', '</nodes>', '<links>', '</links>'].join('\n'),
-    code: 'bad-kind',
-    line: 1,
-  },
-  {
     name: '节点区写了未知键',
     source: ['<nodes>', '[甲:change]', 'path = /a', 'owner = 张三', 'destination = 做完。', '</nodes>', '<links>', '</links>'].join('\n'),
     code: 'unknown-key',
     line: 3,
   },
   {
-    name: '节点缺 destination',
-    source: ['<nodes>', '[甲:change]', 'path = /a', '</nodes>', '<links>', '</links>'].join('\n'),
-    code: 'missing-destination',
-    line: 1,
-  },
-  {
     name: '多行值没收尾',
     source: ['<nodes>', '[甲:change]', 'path = /a', 'destination = [', '做完。', '</nodes>', '<links>', '</links>'].join('\n'),
     code: 'unterminated-value',
     line: 3,
-  },
-  {
-    name: '连线缺 artifact',
-    source: ['<nodes>', '[甲:root]', 'destination = 做完。', '</nodes>', '<links>', '[[甲 -> 甲]]', '</links>'].join('\n'),
-    code: 'missing-artifact',
-    line: 5,
   },
   {
     name: '连线区写了端点键',

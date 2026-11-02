@@ -11,6 +11,7 @@ export type LineRole =
   | 'region-close'
   | 'node-head'
   | 'link-head'
+  | 'link-head-continue'
   | 'key-value'
   | 'value-open'
   | 'value-close'
@@ -38,6 +39,7 @@ export function scanLines(source: string): ScannedLine[] {
   const scanned: ScannedLine[] = []
   let region: RegionName | 'none' = 'none'
   let inValueBlock = false
+  let inLinkHead = false
 
   for (const [index, text] of lines.entries()) {
     const trimmed = text.trim()
@@ -62,6 +64,13 @@ export function scanLines(source: string): ScannedLine[] {
       continue
     }
 
+    if (inLinkHead) {
+      // 表头跨行：后续行的角色只影响着色与折叠，不产出模型事实。
+      if (trimmed.endsWith(']]')) inLinkHead = false
+      scanned.push({ ...base, role: 'link-head-continue', region: 'links' })
+      continue
+    }
+
     const open = asRegion(regionOpen(text))
     if (open !== undefined) {
       region = open
@@ -81,6 +90,7 @@ export function scanLines(source: string): ScannedLine[] {
       continue
     }
     if (region === 'links' && trimmed.startsWith('[[')) {
+      if (!trimmed.endsWith(']]')) inLinkHead = true
       scanned.push({ ...base, role: 'link-head' })
       continue
     }

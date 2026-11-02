@@ -1,14 +1,12 @@
-//! 五条结构判定：模型已产出之后才判得出来的问题。
+//! 三条结构判定：模型已产出之后才判得出来的问题。
 
-use crate::model::{ContractModel, DependencyEdge, Diagnostic, DiagnosticLayer, NodeKind};
+use crate::model::{ContractModel, DependencyEdge, Diagnostic, DiagnosticLayer};
 use std::collections::{BTreeMap, BTreeSet};
 
 pub fn inspect(model: &ContractModel) -> Vec<Diagnostic> {
     let mut diagnostics = Vec::new();
     diagnostics.extend(unknown_nodes(model));
     diagnostics.extend(duplicate_artifacts(model));
-    diagnostics.extend(dangling_nodes(model));
-    diagnostics.extend(missing_paths(model));
     diagnostics.extend(cycles(model));
     diagnostics.sort_by_key(|diagnostic| diagnostic.range.start_line);
     diagnostics
@@ -64,51 +62,6 @@ fn duplicate_artifacts(model: &ContractModel) -> Vec<Diagnostic> {
         }
     }
     diagnostics
-}
-
-fn dangling_nodes(model: &ContractModel) -> Vec<Diagnostic> {
-    let outbound: BTreeSet<&str> = model.links.iter().map(|link| link.from.as_str()).collect();
-    let mut diagnostics = Vec::new();
-
-    let roots: Vec<&crate::model::DagNode> = model
-        .nodes
-        .iter()
-        .filter(|node| node.kind == NodeKind::Root)
-        .collect();
-    if let Some(extra_root) = roots.get(1) {
-        diagnostics.push(structural(
-            "dangling-node",
-            format!("图里只能有一个根节点，这里有 {} 个", roots.len()),
-            extra_root.range,
-        ));
-    }
-
-    for node in &model.nodes {
-        if node.kind == NodeKind::Root || outbound.contains(node.name.as_str()) {
-            continue;
-        }
-        diagnostics.push(structural(
-            "dangling-node",
-            format!("非根节点没有出边，产物交不出去：{}", node.name),
-            node.range,
-        ));
-    }
-    diagnostics
-}
-
-fn missing_paths(model: &ContractModel) -> Vec<Diagnostic> {
-    model
-        .nodes
-        .iter()
-        .filter(|node| node.kind == NodeKind::Change && node.path.is_empty())
-        .map(|node| {
-            structural(
-                "missing-path",
-                format!("变更节点没写 path：{}", node.name),
-                node.range,
-            )
-        })
-        .collect()
 }
 
 fn cycles(model: &ContractModel) -> Vec<Diagnostic> {

@@ -217,6 +217,7 @@ fn read_links(
     from: usize,
     out: &mut Vec<DependencyEdge>,
 ) -> Result<usize, SyntaxFailure> {
+    let mut merged: Vec<DependencyEdge> = Vec::new();
     let mut cursor = from;
     loop {
         cursor = skip_ignorable(lines, cursor);
@@ -232,32 +233,96 @@ fn read_links(
         let range = syntax::line_range(cursor, syntax::text_len(text));
         if let Some(close) = syntax::region_close(text) {
             if close == "links" {
+                out.append(&mut merged);
                 return Ok(cursor + 1);
             }
             return fail("region-order", format!("连线区里出现了 </{close}>"), range);
         }
 
-        match syntax::parse_link_head(text) {
-            Parsed::Ok(head) => {
-                let (entries, next) = read_entries(lines, cursor + 1, true)?;
-                out.push(build_link(&head, range, entries)?);
-                cursor = next;
-            }
-            Parsed::Bad { code, message } => {
-                if !syntax::js_trim(text).starts_with("[[") {
-                    return fail(
-                        "unexpected-text",
-                        format!(
-                            "连线区只收 [[源 -> 目的]] 表头与键值行：{}",
-                            syntax::js_trim(text)
-                        ),
-                        range,
-                    );
-                }
-                return fail(code, message, range);
+        if !syntax::js_trim(text).starts_with("[[") {
+            return fail(
+                "unexpected-text",
+                format!(
+                    "连线区只收 [[源 -> 目的]] 表头与键值行：{}",
+                    syntax::js_trim(text)
+                ),
+                range,
+            );
+        }
+
+        let (hand, next) = read_link_head(lines, cursor)?;
+        let (entries, body_next) = read_entries(lines, next, true)?;
+        if hand.len() > 2 && !entries.is_empty() {
+            let key_range = entries[0].key_range;
+            return fail(
+                "chain-with-keys",
+                "链式表头不带键：要产物就另写一条单边声明",
+                key_range,
+            );
+        }
+
+        // 一条链展开成沿途相邻的两两成边；同名对再次出现就是同一条边。
+        for pair in hand.windows(2) {
+            let edge = build_link(&pair[0], &pair[1], range, &entries)?;
+            merge_edge(&mut merged, edge);
+        }
+        cursor = body_next;
+    }
+}
+
+/// 表头从 `[[` 起可以跨若干行，收到 `]]` 为止；中间的空行与注释跳过。
+fn read_link_head(lines: &[String], from: usize) -> Result<(Vec<String>, usize), SyntaxFailure> {
+    let mut joined = String::new();
+    let mut last_range = last_line_range(lines);
+
+    for cursor in from..lines.len() {
+        let text = line_at(lines, cursor);
+        let trimmed = syntax::js_trim(text);
+        if trimmed.is_empty() || trimmed.starts_with('#') {
+            continue;
+        }
+        if syntax::region_close(text).is_some() {
+            break;
+        }
+        if joined.is_empty() {
+            joined.push_str(trimmed);
+        } else {
+            joined.push(' ');
+            joined.push_str(trimmed);
+        }
+        last_range = syntax::line_range(cursor, syntax::text_len(text));
+        if !trimmed.ends_with("]]") {
+            continue;
+        }
+        return match syntax::parse_link_head(&joined) {
+            Parsed::Ok(head) => Ok((head.names, cursor + 1)),
+            Parsed::Bad { code, message } => fail(code, message, last_range),
+        };
+    }
+
+    fail("unterminated-link-head", "连线表头没收尾，缺 ]]", last_range)
+}
+
+/// 重复声明合并：产物取并集，其余键以后写的为准。
+fn merge_edge(merged: &mut Vec<DependencyEdge>, edge: DependencyEdge) {
+    if let Some(first) = merged
+        .iter_mut()
+        .find(|entry| entry.from == edge.from && entry.to == edge.to)
+    {
+        for artifact in edge.artifacts {
+            if !first.artifacts.contains(&artifact) {
+                first.artifacts.push(artifact);
             }
         }
+        for (key, value) in edge.properties {
+            first.properties.insert(key, value);
+        }
+        for (key, range) in edge.key_ranges {
+            first.key_ranges.insert(key, range);
+        }
+        return;
     }
+    merged.push(edge);
 }
 
 fn read_entries(
@@ -362,17 +427,10 @@ fn build_node(
         }
         key_ranges.insert(entry.key, entry.key_range);
     }
-    if !key_ranges.contains_key("destination") {
-        return fail(
-            "missing-destination",
-            format!("节点 {} 没写 destination", head.name),
-            range,
-        );
-    }
 
     Ok(DagNode {
         name: head.name.clone(),
-        kind: head.kind,
+        annotation: head.annotation.clone(),
         path,
         destination,
         range,
@@ -381,9 +439,10 @@ fn build_node(
 }
 
 fn build_link(
-    head: &syntax::LinkHead,
+    from: &str,
+    to: &str,
     range: SourceRange,
-    entries: Vec<Entry>,
+    entries: &[Entry],
 ) -> Result<DependencyEdge, SyntaxFailure> {
     let mut artifacts: Vec<String> = Vec::new();
     let mut properties: BTreeMap<String, String> = BTreeMap::new();
@@ -398,8 +457,8 @@ fn build_link(
             );
         }
         if entry.key == "artifact" {
-            artifacts.extend(entry.values.into_iter().filter(|value| !value.is_empty()));
-            key_ranges.insert(entry.key, entry.key_range);
+            artifacts.extend(entry.values.iter().filter(|value| !value.is_empty()).cloned());
+            key_ranges.insert(entry.key.clone(), entry.key_range);
             continue;
         }
         // 只有 artifact 可以写成多行：其余键机器忽略，多行没有意义。
@@ -414,19 +473,12 @@ fn build_link(
             entry.key.clone(),
             entry.values.first().cloned().unwrap_or_default(),
         );
-        key_ranges.insert(entry.key, entry.key_range);
-    }
-    if artifacts.is_empty() {
-        return fail(
-            "missing-artifact",
-            format!("连线 {} -> {} 没写 artifact", head.from, head.to),
-            range,
-        );
+        key_ranges.insert(entry.key.clone(), entry.key_range);
     }
 
     Ok(DependencyEdge {
-        from: head.from.clone(),
-        to: head.to.clone(),
+        from: String::from(from),
+        to: String::from(to),
         artifacts,
         properties,
         range,

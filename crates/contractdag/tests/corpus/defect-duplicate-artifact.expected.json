@@ -3,7 +3,7 @@
     "nodes": [
       {
         "name": "甲",
-        "kind": "change",
+        "annotation": "change",
         "path": [
           "/srv/dup"
         ],
@@ -33,7 +33,7 @@
       },
       {
         "name": "乙",
-        "kind": "root",
+        "annotation": "root",
         "path": [],
         "destination": [
           "出口。"
@@ -52,31 +52,31 @@
             "endCharacter": 17
           }
         }
-      }
-    ],
-    "links": [
+      },
       {
-        "from": "甲",
-        "to": "乙",
-        "artifacts": [
-          "same-name"
+        "name": "丙",
+        "annotation": "root",
+        "path": [],
+        "destination": [
+          "另一个出口。"
         ],
-        "properties": {},
         "range": {
-          "startLine": 12,
+          "startLine": 9,
           "startCharacter": 0,
-          "endLine": 12,
-          "endCharacter": 10
+          "endLine": 9,
+          "endCharacter": 8
         },
         "keyRanges": {
-          "artifact": {
-            "startLine": 13,
+          "destination": {
+            "startLine": 10,
             "startCharacter": 0,
-            "endLine": 13,
+            "endLine": 10,
             "endCharacter": 20
           }
         }
-      },
+      }
+    ],
+    "links": [
       {
         "from": "甲",
         "to": "乙",
@@ -98,6 +98,28 @@
             "endCharacter": 20
           }
         }
+      },
+      {
+        "from": "甲",
+        "to": "丙",
+        "artifacts": [
+          "same-name"
+        ],
+        "properties": {},
+        "range": {
+          "startLine": 18,
+          "startCharacter": 0,
+          "endLine": 18,
+          "endCharacter": 10
+        },
+        "keyRanges": {
+          "artifact": {
+            "startLine": 19,
+            "startCharacter": 0,
+            "endLine": 19,
+            "endCharacter": 20
+          }
+        }
       }
     ]
   },
@@ -114,9 +136,9 @@
       "code": "duplicate-artifact",
       "message": "产物名重复：same-name 已挂在 甲 -> 乙 上",
       "range": {
-        "startLine": 15,
+        "startLine": 18,
         "startCharacter": 0,
-        "endLine": 15,
+        "endLine": 18,
         "endCharacter": 10
       }
     }

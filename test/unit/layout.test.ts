@@ -17,7 +17,7 @@ function boxesToObject(boxes: Map<string, NodeBox>): Record<string, NodeBox> {
 const zero = { startLine: 0, startCharacter: 0, endLine: 0, endCharacter: 0 }
 
 function node(name: string): ContractModel['nodes'][number] {
-  return { name, kind: 'change', path: ['/a'], destination: ['做完。'], range: zero, keyRanges: {} }
+  return { name, annotation: 'change', path: ['/a'], destination: ['做完。'], range: zero, keyRanges: {} }
 }
 
 function link(from: string, to: string, artifact = 'x'): ContractModel['links'][number] {
@@ -81,7 +81,7 @@ test('连线指向未声明的节点时照样排版，不抛错', () => {
     nodes: [
       {
         name: '甲',
-        kind: 'change',
+        annotation: 'change',
         path: ['/a'],
         destination: ['做完。'],
         range: { startLine: 0, startCharacter: 0, endLine: 0, endCharacter: 0 },

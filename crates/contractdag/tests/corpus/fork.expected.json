@@ -3,7 +3,7 @@
     "nodes": [
       {
         "name": "甲",
-        "kind": "change",
+        "annotation": "change",
         "path": [
           "/srv/fork/root"
         ],
@@ -33,7 +33,7 @@
       },
       {
         "name": "乙",
-        "kind": "change",
+        "annotation": "change",
         "path": [
           "/srv/fork/left"
         ],
@@ -63,7 +63,7 @@
       },
       {
         "name": "丙",
-        "kind": "query",
+        "annotation": "query",
         "path": [
           "/srv/fork/right"
         ],
@@ -93,7 +93,7 @@
       },
       {
         "name": "丁",
-        "kind": "root",
+        "annotation": "root",
         "path": [],
         "destination": [
           "两支都回到出口。"

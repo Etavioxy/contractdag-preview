@@ -55,13 +55,11 @@ test('文法错误的样例报在区名那一行', () => {
 const defectFixtures: Array<[string, string[]]> = [
   ['defect-cycle.contractdag', ['cycle', 'cycle']],
   ['defect-duplicate-artifact.contractdag', ['duplicate-artifact']],
-  ['defect-dangling.contractdag', ['dangling-node']],
-  ['defect-missing-path.contractdag', ['missing-path']],
   ['defect-unknown-node.contractdag', ['unknown-node']],
 ]
 
 for (const [file, expected] of defectFixtures) {
-  test(`五条缺陷各有一份样例：${file}`, () => {
+  test(`三条缺陷各有一份样例：${file}`, () => {
     assert.deepEqual(codesOf(file), expected)
   })
 }

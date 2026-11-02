@@ -1,4 +1,4 @@
-/** 五条结构判定：模型已产出之后才判得出来的问题。 */
+/** 三条结构判定：模型已产出之后才判得出来的问题。 */
 
 import type { ContractModel, DependencyEdge, Diagnostic } from './model.ts'
 
@@ -6,8 +6,6 @@ export function inspect(model: ContractModel): Diagnostic[] {
   const diagnostics = [
     ...unknownNodes(model),
     ...duplicateArtifacts(model),
-    ...danglingNodes(model),
-    ...missingPaths(model),
     ...cycles(model),
   ]
   return diagnostics.sort((left, right) => left.range.startLine - right.range.startLine)
@@ -48,44 +46,6 @@ function duplicateArtifacts(model: ContractModel): Diagnostic[] {
     }
   }
   return diagnostics
-}
-
-function danglingNodes(model: ContractModel): Diagnostic[] {
-  const outbound = new Set(model.links.map((link) => link.from))
-  const diagnostics: Diagnostic[] = []
-
-  const extraRoot = model.nodes.filter((node) => node.kind === 'root')[1]
-  if (extraRoot !== undefined) {
-    const rootCount = model.nodes.filter((node) => node.kind === 'root').length
-    diagnostics.push({
-      layer: 'structural',
-      code: 'dangling-node',
-      message: `图里只能有一个根节点，这里有 ${rootCount} 个`,
-      range: extraRoot.range,
-    })
-  }
-
-  for (const node of model.nodes) {
-    if (node.kind === 'root' || outbound.has(node.name)) continue
-    diagnostics.push({
-      layer: 'structural',
-      code: 'dangling-node',
-      message: `非根节点没有出边，产物交不出去：${node.name}`,
-      range: node.range,
-    })
-  }
-  return diagnostics
-}
-
-function missingPaths(model: ContractModel): Diagnostic[] {
-  return model.nodes
-    .filter((node) => node.kind === 'change' && node.path.length === 0)
-    .map((node) => ({
-      layer: 'structural' as const,
-      code: 'missing-path',
-      message: `变更节点没写 path：${node.name}`,
-      range: node.range,
-    }))
 }
 
 function cycles(model: ContractModel): Diagnostic[] {

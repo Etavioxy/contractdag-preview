@@ -3,27 +3,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
-/// 节点种类。
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
-pub enum NodeKind {
-    Change,
-    Query,
-    Root,
-}
-
-pub const NODE_KINDS: [NodeKind; 3] = [NodeKind::Change, NodeKind::Query, NodeKind::Root];
-
-impl NodeKind {
-    pub const fn as_str(self) -> &'static str {
-        match self {
-            NodeKind::Change => "change",
-            NodeKind::Query => "query",
-            NodeKind::Root => "root",
-        }
-    }
-}
-
 /// 文本里的一个位置区间，行与列都从 0 起，与 VS Code 的 Range 同一口径。
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -38,7 +17,8 @@ pub struct SourceRange {
 #[serde(rename_all = "camelCase")]
 pub struct DagNode {
     pub name: String,
-    pub kind: NodeKind,
+    /// 冒号后的自由文本，只作呈现用的标注，不参与任何判定。
+    pub annotation: String,
     pub path: Vec<String>,
     pub destination: Vec<String>,
     pub range: SourceRange,

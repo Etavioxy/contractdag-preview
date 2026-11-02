@@ -33,7 +33,7 @@ fn corpus_matches_the_typescript_expectations() {
     }
 
     assert!(
-        checked >= 9,
+        checked >= 7,
         "语料里只有 {checked} 份样例，跑 pnpm conformance"
     );
 }

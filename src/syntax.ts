@@ -1,6 +1,6 @@
 /** 行级词法：把一行文本认成区标签、表头、键值行或样式命令，不持有状态。 */
 
-import { nodeKinds, type NodeKind, type SourceRange, type StyleSheet } from './model.ts'
+import type { SourceRange, StyleSheet } from './model.ts'
 
 export type Parsed<T> = { ok: true; value: T } | { ok: false; code: string; message: string }
 
@@ -31,42 +31,41 @@ export function regionClose(text: string): string | undefined {
 
 export interface NodeHead {
   name: string
-  kind: NodeKind
+  /** 冒号后的标注：可以是任何文字，只显示，不判定。 */
+  annotation: string
 }
 
 export function parseNodeHead(text: string): Parsed<NodeHead> {
   const trimmed = text.trim()
   if (!trimmed.startsWith('[') || !trimmed.endsWith(']') || trimmed.startsWith('[[')) {
-    return bad('bad-node-head', '节点头要写成 [名字] 或 [名字:种类]')
+    return bad('bad-node-head', '节点头要写成 [名字] 或 [名字:标注]')
   }
   const inner = trimmed.slice(1, -1)
   const colon = inner.lastIndexOf(':')
   const name = (colon === -1 ? inner : inner.slice(0, colon)).trim()
-  const kindText = colon === -1 ? '' : inner.slice(colon + 1).trim()
+  const annotation = colon === -1 ? '' : inner.slice(colon + 1).trim()
   if (name === '') return bad('empty-name', '节点没有名字')
-  if (kindText !== '' && !nodeKinds.includes(kindText as NodeKind)) {
-    return bad('bad-kind', `种类只有 ${nodeKinds.join(' / ')}，写成了 ${kindText}`)
-  }
-  return ok({ name, kind: (kindText === '' ? 'change' : kindText) as NodeKind })
+  return ok({ name, annotation })
 }
 
 export interface LinkHead {
-  from: string
-  to: string
+  /** 表头里按 `->` 切出的名字序列：相邻两名一条边。 */
+  names: string[]
 }
 
+/** 表头可以来自多行，调用方先把它们按空格拼成一段再交进来。 */
 export function parseLinkHead(text: string): Parsed<LinkHead> {
   const trimmed = text.trim()
   if (!trimmed.startsWith('[[') || !trimmed.endsWith(']]')) {
     return bad('bad-link-head', '连线表头要写成 [[源 -> 目的]]')
   }
-  const inner = trimmed.slice(2, -2)
-  const parts = inner.split('->')
-  if (parts.length !== 2) return bad('bad-link-head', '连线表头要有且只有一个 ->')
-  const from = parts[0]?.trim() ?? ''
-  const to = parts[1]?.trim() ?? ''
-  if (from === '' || to === '') return bad('bad-link-head', '连线两端都要有节点名')
-  return ok({ from, to })
+  const names = trimmed
+    .slice(2, -2)
+    .split('->')
+    .map((part) => part.trim())
+  if (names.length < 2) return bad('bad-link-head', '连线表头至少要两个名字，用 -> 连起来')
+  if (names.some((name) => name === '')) return bad('bad-link-head', '-> 两边都要有节点名')
+  return ok({ names })
 }
 
 export interface KeyValue {
@@ -113,7 +112,7 @@ function parseProperties(text: string): Parsed<Record<string, string>> {
   return ok(properties)
 }
 
-function splitEndpoints(text: string): Parsed<LinkHead> {
+function splitEndpoints(text: string): Parsed<{ from: string; to: string }> {
   const parts = text.split('->')
   if (parts.length !== 2) return bad('bad-style-value', '端点要写成 源 -> 目的')
   const from = parts[0]?.trim() ?? ''

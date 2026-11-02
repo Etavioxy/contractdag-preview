@@ -7,8 +7,7 @@ mod syntax;
 
 pub use model::{
     ClassAssignment, ContractModel, DEFAULT_GAP, DagNode, DependencyEdge, Diagnostic,
-    DiagnosticLayer, Direction, LinkStyle, NODE_KINDS, NodeKind, ParseResult, SourceRange,
-    StyleSheet,
+    DiagnosticLayer, Direction, LinkStyle, ParseResult, SourceRange, StyleSheet,
 };
 pub use parser::parse;
 
@@ -26,9 +25,9 @@ mod tests {
         assert_eq!(model.nodes.len(), 4);
         assert_eq!(model.links.len(), 3);
         assert_eq!(model.nodes[0].name, "源码构建节点");
-        assert_eq!(model.nodes[0].kind, NodeKind::Change);
-        assert_eq!(model.nodes[2].kind, NodeKind::Query);
-        assert_eq!(model.nodes[3].kind, NodeKind::Root);
+        assert_eq!(model.nodes[0].annotation, "change");
+        assert_eq!(model.nodes[2].annotation, "query");
+        assert_eq!(model.nodes[3].annotation, "root");
     }
 
     #[test]
@@ -49,15 +48,8 @@ mod tests {
         let source = "\u{FEFF}<nodes>\r\n\r\n[甲:change]\r\npath = /tmp/a\r\ndestination = 收工。\r\n\r\n</nodes>\r\n\r\n<links>\r\n</links>\r\n";
         let result = parse(source);
 
-        // 这份样例只有一个非根节点、没有出边，结构层会报断头；这里只验 CRLF 与 BOM 不进模型。
-        assert_eq!(
-            result
-                .diagnostics
-                .iter()
-                .map(|diagnostic| diagnostic.code.as_str())
-                .collect::<Vec<_>>(),
-            vec!["dangling-node"],
-        );
+        // 这份样例只有一个节点、没有出边，结构层不再报断头；这里只验 CRLF 与 BOM 不进模型。
+        assert!(result.diagnostics.is_empty());
         let model = result.model.expect("模型应当产出");
         assert_eq!(model.nodes[0].range.start_line, 2);
         assert_eq!(model.nodes[0].path, vec![String::from("/tmp/a")]);

@@ -1,9 +1,5 @@
 /** 契约模型的类型与外部形状。 */
 
-export type NodeKind = 'change' | 'query' | 'root'
-
-export const nodeKinds: readonly NodeKind[] = ['change', 'query', 'root']
-
 /** 文本里的一个位置区间，行与列都从 0 起，与 VSCode 的 Range 同一口径。 */
 export interface SourceRange {
   startLine: number
@@ -14,7 +10,8 @@ export interface SourceRange {
 
 export interface DagNode {
   name: string
-  kind: NodeKind
+  /** 冒号后的自由文本，只作呈现用的标注，不参与任何判定。 */
+  annotation: string
   path: string[]
   destination: string[]
   range: SourceRange
@@ -24,7 +21,7 @@ export interface DagNode {
 export interface DependencyEdge {
   from: string
   to: string
-  /** 交接的产物：一条边可以带多个，`artifact` 必填且至少一个。 */
+  /** 交接的产物：一条边可以带多个，也可以一个都不带。 */
   artifacts: string[]
   /** 连线区的其余自由键值。 */
   properties: Record<string, string>
@@ -83,7 +80,7 @@ export function createStyleSheet(): StyleSheet {
 
 export interface DumpNode {
   name: string
-  kind: NodeKind
+  annotation: string
   path: string[]
   destination: string[]
 }
@@ -99,7 +96,7 @@ export function toDumpJson(model: ContractModel, diagnostics: Diagnostic[]): Dum
   return {
     nodes: model.nodes.map((node) => ({
       name: node.name,
-      kind: node.kind,
+      annotation: node.annotation,
       path: node.path,
       destination: node.destination,
     })),

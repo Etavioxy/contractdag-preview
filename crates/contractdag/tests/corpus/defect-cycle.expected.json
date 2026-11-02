@@ -3,7 +3,7 @@
     "nodes": [
       {
         "name": "甲",
-        "kind": "change",
+        "annotation": "change",
         "path": [
           "/srv/cycle/a"
         ],
@@ -33,7 +33,7 @@
       },
       {
         "name": "乙",
-        "kind": "change",
+        "annotation": "change",
         "path": [
           "/srv/cycle/b"
         ],

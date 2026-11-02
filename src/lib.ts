@@ -18,7 +18,7 @@ export function parseContract(source: string): ParseResult {
   return model === undefined ? { style, diagnostics } : { model, style, diagnostics }
 }
 
-export { nodeKinds, toDumpJson } from './model.ts'
+export { toDumpJson } from './model.ts'
 export type {
   ClassAssignment,
   ContractModel,
@@ -27,7 +27,6 @@ export type {
   Diagnostic,
   DiagnosticLayer,
   LinkStyle,
-  NodeKind,
   SourceRange,
   StyleSheet,
 } from './model.ts'

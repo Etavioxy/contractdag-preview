@@ -158,6 +158,7 @@ function readNodes(lines: string[], from: number, out: DagNode[]): number {
 }
 
 function readLinks(lines: string[], from: number, out: DependencyEdge[]): number {
+  const merged = new Map<string, DependencyEdge>()
   let cursor = from
   for (;;) {
     cursor = skipIgnorable(lines, cursor)
@@ -165,21 +166,74 @@ function readLinks(lines: string[], from: number, out: DependencyEdge[]): number
     const text = lineAt(lines, cursor)
     const range = syntax.lineRange(cursor, text.length)
     const close = syntax.regionClose(text)
-    if (close === 'links') return cursor + 1
+    if (close === 'links') {
+      out.push(...merged.values())
+      return cursor + 1
+    }
     if (close !== undefined) throw fail('region-order', `连线区里出现了 </${close}>`, range)
 
-    const head = syntax.parseLinkHead(text)
-    if (!head.ok) {
-      if (!text.trim().startsWith('[[')) {
-        throw fail('unexpected-text', `连线区只收 [[源 -> 目的]] 表头与键值行：${text.trim()}`, range)
-      }
-      throw fail(head.code, head.message, range)
+    if (!text.trim().startsWith('[[')) {
+      throw fail('unexpected-text', `连线区只收 [[源 -> 目的]] 表头与键值行：${text.trim()}`, range)
     }
 
-    const body = readEntries(lines, cursor + 1, { allowBlockValues: true })
-    out.push(buildLink(head.value, range, body.entries))
+    const head = readLinkHead(lines, cursor)
+    const body = readEntries(lines, head.next, { allowBlockValues: true })
+    if (head.names.length > 2 && body.entries.length > 0) {
+      throw fail('chain-with-keys', '链式表头不带键：要产物就另写一条单边声明', body.entries[0]?.keyRange ?? range)
+    }
+
+    // 一条链展开成沿途相邻的两两成边；同名对再次出现就是同一条边。
+    for (let index = 0; index + 1 < head.names.length; index += 1) {
+      mergeEdge(merged, buildLink(head.names[index] as string, head.names[index + 1] as string, range, body.entries))
+    }
     cursor = body.next
   }
+}
+
+interface LinkHeadRead {
+  names: string[]
+  next: number
+}
+
+/** 表头从 `[[` 起可以跨若干行，收到 `]]` 为止；中间的空行与注释跳过。 */
+function readLinkHead(lines: string[], from: number): LinkHeadRead {
+  let joined = ''
+  let lastRange = lastLineRange(lines)
+
+  for (let cursor = from; cursor < lines.length; cursor += 1) {
+    const text = lineAt(lines, cursor)
+    const trimmed = text.trim()
+    if (trimmed === '' || trimmed.startsWith('#')) continue
+    if (syntax.regionClose(text) !== undefined) break
+    joined = joined === '' ? trimmed : `${joined} ${trimmed}`
+    lastRange = syntax.lineRange(cursor, text.length)
+    if (!trimmed.endsWith(']]')) continue
+
+    const parsed = syntax.parseLinkHead(joined)
+    if (!parsed.ok) throw fail(parsed.code, parsed.message, lastRange)
+    return { names: parsed.value.names, next: cursor + 1 }
+  }
+
+  throw fail('unterminated-link-head', '连线表头没收尾，缺 ]]', lastRange)
+}
+
+/** 边的身份是两端的那对名字：同一条边写两处不新增一条。 */
+function edgeKey(from: string, to: string): string {
+  return `${from}\u0000${to}`
+}
+
+/** 重复声明合并：产物取并集，其余键以后写的为准。 */
+function mergeEdge(merged: Map<string, DependencyEdge>, edge: DependencyEdge): void {
+  const first = merged.get(edgeKey(edge.from, edge.to))
+  if (first === undefined) {
+    merged.set(edgeKey(edge.from, edge.to), edge)
+    return
+  }
+  for (const artifact of edge.artifacts) {
+    if (!first.artifacts.includes(artifact)) first.artifacts.push(artifact)
+  }
+  Object.assign(first.properties, edge.properties)
+  Object.assign(first.keyRanges, edge.keyRanges)
 }
 
 function readEntries(
@@ -242,14 +296,11 @@ function buildNode(head: syntax.NodeHead, range: SourceRange, entries: Entry[]):
     else throw fail('unknown-key', `节点区只收 path 与 destination，不认 ${entry.key}`, entry.keyRange)
     keyRanges[entry.key] = entry.keyRange
   }
-  if (keyRanges['destination'] === undefined) {
-    throw fail('missing-destination', `节点 ${head.name} 没写 destination`, range)
-  }
 
-  return { name: head.name, kind: head.kind, path, destination, range, keyRanges }
+  return { name: head.name, annotation: head.annotation, path, destination, range, keyRanges }
 }
 
-function buildLink(head: syntax.LinkHead, range: SourceRange, entries: Entry[]): DependencyEdge {
+function buildLink(from: string, to: string, range: SourceRange, entries: Entry[]): DependencyEdge {
   const artifacts: string[] = []
   const properties: Record<string, string> = {}
   const keyRanges: Record<string, SourceRange> = {}
@@ -270,11 +321,7 @@ function buildLink(head: syntax.LinkHead, range: SourceRange, entries: Entry[]):
     properties[entry.key] = entry.values[0] ?? ''
     keyRanges[entry.key] = entry.keyRange
   }
-  if (artifacts.length === 0) {
-    throw fail('missing-artifact', `连线 ${head.from} -> ${head.to} 没写 artifact`, range)
-  }
-
-  return { from: head.from, to: head.to, artifacts, properties, range, keyRanges }
+  return { from, to, artifacts, properties, range, keyRanges }
 }
 
 function readStyle(lines: string[], from: number, style: StyleSheet): number {

@@ -48,65 +48,9 @@ test('产物重名：报在后写的那条边上', () => {
     'path = /a',
     'destination = 做完。',
     '',
-    '[乙:root]',
-    'destination = 收尾。',
-    '</nodes>',
-    '',
-    '<links>',
-    '[[甲 -> 乙]]',
-    'artifact = x',
-    '',
-    '[[甲 -> 乙]]',
-    'artifact = x',
-    '</links>',
-  ].join('\n')
-
-  const analysis = parse(source)
-
-  assert.deepEqual(
-    analysis.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.range.startLine]),
-    [['duplicate-artifact', 13]],
-  )
-})
-
-test('断头节点：非根节点没有出边', () => {
-  const source = [
-    '<nodes>',
-    '[甲:change]',
-    'path = /a',
+    '[乙:change]',
+    'path = /b',
     'destination = 做完。',
-    '',
-    '[乙:root]',
-    'destination = 收尾。',
-    '',
-    '[丙:change]',
-    'path = /c',
-    'destination = 做完。',
-    '</nodes>',
-    '',
-    '<links>',
-    '[[甲 -> 乙]]',
-    'artifact = x',
-    '</links>',
-  ].join('\n')
-
-  const analysis = parse(source)
-
-  assert.deepEqual(
-    analysis.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.range.startLine]),
-    [['dangling-node', 8]],
-  )
-})
-
-test('根节点不止一个也算断头：出口只能有一处', () => {
-  const source = [
-    '<nodes>',
-    '[甲:change]',
-    'path = /a',
-    'destination = 做完。',
-    '',
-    '[乙:root]',
-    'destination = 收尾。',
     '',
     '[丙:root]',
     'destination = 收尾。',
@@ -116,31 +60,7 @@ test('根节点不止一个也算断头：出口只能有一处', () => {
     '[[甲 -> 乙]]',
     'artifact = x',
     '',
-    '[[甲 -> 丙]]',
-    'artifact = y',
-    '</links>',
-  ].join('\n')
-
-  const analysis = parse(source)
-
-  assert.deepEqual(
-    analysis.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.range.startLine, diagnostic.message]),
-    [['dangling-node', 8, '图里只能有一个根节点，这里有 2 个']],
-  )
-})
-
-test('变更节点缺 path', () => {
-  const source = [
-    '<nodes>',
-    '[甲:change]',
-    'destination = 做完。',
-    '',
-    '[乙:root]',
-    'destination = 收尾。',
-    '</nodes>',
-    '',
-    '<links>',
-    '[[甲 -> 乙]]',
+    '[[乙 -> 丙]]',
     'artifact = x',
     '</links>',
   ].join('\n')
@@ -148,15 +68,75 @@ test('变更节点缺 path', () => {
   const analysis = parse(source)
 
   assert.deepEqual(
-    analysis.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.message]),
-    [['missing-path', '变更节点没写 path：甲']],
+    analysis.diagnostics.map((diagnostic) => [diagnostic.code, diagnostic.range.startLine]),
+    [['duplicate-artifact', 17]],
   )
+})
+
+test('同一条边写两遍：仍是同一条边，产物取并集，不报重名', () => {
+  const source = [
+    '<nodes>',
+    '[甲]',
+    'destination = 做完。',
+    '',
+    '[乙]',
+    'destination = 收尾。',
+    '</nodes>',
+    '',
+    '<links>',
+    '[[甲 -> 乙]]',
+    'artifact = x',
+    '',
+    '[[甲 -> 乙]]',
+    'artifact = y',
+    '</links>',
+  ].join('\n')
+
+  const analysis = parse(source)
+  const link = analysis.model?.links[0]
+
+  assert.equal(analysis.model?.links.length, 1)
+  assert.deepEqual(link?.artifacts, ['x', 'y'])
+  assert.deepEqual(analysis.diagnostics, [])
+})
+
+test('链式表头：相邻两名一条边，与单边声明合并成同一批边', () => {
+  const source = [
+    '<nodes>',
+    '[甲]',
+    'destination = 甲做完。',
+    '',
+    '[乙]',
+    'destination = 乙做完。',
+    '',
+    '[丙]',
+    'destination = 丙做完。',
+    '</nodes>',
+    '',
+    '<links>',
+    '[[甲 ->',
+    ' 乙',
+    ' -> 丙]]',
+    '',
+    '[[乙 -> 丙]]',
+    'artifact = y',
+    '</links>',
+  ].join('\n')
+
+  const analysis = parse(source)
+  const pairs = analysis.model?.links.map((link) => [link.from, link.to, link.artifacts])
+
+  assert.deepEqual(pairs, [
+    ['甲', '乙', []],
+    ['乙', '丙', ['y']],
+  ])
+  assert.deepEqual(analysis.diagnostics, [])
 })
 
 test('坏名字：连线引用了未声明的节点', () => {
   const source = [
     '<nodes>',
-    '[甲:root]',
+    '[甲]',
     'destination = 收尾。',
     '</nodes>',
     '',
@@ -177,15 +157,15 @@ test('坏名字：连线引用了未声明的节点', () => {
 test('一个模型可同时含多处缺陷，各带自己的位置', () => {
   const source = [
     '<nodes>',
-    '[甲:change]',
+    '[甲]',
     'path = /a',
     'destination = 做完。',
     '',
-    '[乙:change]',
+    '[乙]',
     'path = /b',
     'destination = 做完。',
     '',
-    '[丙:root]',
+    '[丙]',
     'destination = 收尾。',
     '</nodes>',
     '',
