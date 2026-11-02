@@ -32,7 +32,8 @@ const { model, style, diagnostics } = parseContract(source)
 - `packages/contractdag` 是发 npm 的那一层，`exports` 指向库；扩展自己的 `main` 仍是 `dist/extension.cjs`，扩展本体不上 npm，两边互不改对方的加载方式。
 - `range` 行与列都从 0 起，与 VS Code 同口径；节点与连线除自身 `range` 外还带 `keyRanges`，逐键定位到声明行。
 - 文法错误不产出模型：模型要么完整要么没有，调用方不用拼半个模型。
-- 结构缺陷不撤模型：环、断头、产物重名、缺 `path`、坏名字都在 `diagnostics` 里，`model` 照常给出。
+- 结构缺陷不撤模型：环、产物重名、坏名字都在 `diagnostics` 里，`model` 照常给出。
+- 模型里的依赖边按「源 -> 目的」唯一：同一对名字写两遍已合并成一条，产物取并集；链式表头展开出的边与单边声明合并成同一批边。
 - `toDumpJson(model, diagnostics)` 给只要契约本身、不要行号的一侧用；扩展的「导出契约模型」按它出 JSON。
 
 ## Rust
@@ -45,7 +46,7 @@ for diagnostic in &result.diagnostics {
 ```
 
 - `contractdag::parse(&str) -> ParseResult`，字段与 TypeScript 侧同构：`model`（`Option<ContractModel>`）、`style`、`diagnostics`。
-- 类型全部实现了 `Serialize` / `Deserialize`，JSON 与 npm 侧逐字段一致：区间是 `startLine` / `startCharacter` 这类小驼峰，种类小写，方向大写。
+- 类型全部实现了 `Serialize` / `Deserialize`，JSON 与 npm 侧逐字段一致：区间是 `startLine` / `startCharacter` 这类小驼峰，方向大写，标注原样带出。
 - 列宽按 UTF-16 码元数算，与 JavaScript 的 `String.length` 同口径——列号拿到 JS 侧能直接用，不按字节数。
 - 不碰文件系统与时钟：`parse` 只吃字符串，同样的输入永远给同样的输出。
 

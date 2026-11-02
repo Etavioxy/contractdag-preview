@@ -135,25 +135,25 @@ artifact = verify-report
 </links>
 ```
 
-§变更节点没写 `path` 这一行，这份文件就不是合法的 §契约声明文件。§样式区整块省略，方向与间距取默认值。
+§样式区整块省略，方向与间距取默认值。
 
 ## 解析把它读成什么
 
 ```json
 {
   "nodes": [
-    {"name": "源码构建节点", "kind": "change",
+    {"name": "源码构建节点", "annotation": "change",
      "path": ["/srv/app/build"],
      "destination": ["构建包 `build.tar` 已产出，校验和已记录。",
                      "只写 path 里的位置。"]},
-    {"name": "上线安装节点", "kind": "change",
+    {"name": "上线安装节点", "annotation": "change",
      "path": ["/srv/app/build", "/srv/app/config"],
      "destination": ["两个服务探活连续 3 次成功。", "配置目录只增不改。"]},
-    {"name": "站点巡检节点", "kind": "query",
+    {"name": "站点巡检节点", "annotation": "query",
      "path": ["/srv/app/live"],
      "destination": ["对外三个页面各抓取 3 次，全部返回 200 且内容哈希一致。",
                      "抓取并发 8 路，对同一站点不超过每秒 2 次请求。"]},
-    {"name": "流水线收尾", "kind": "root",
+    {"name": "流水线收尾", "annotation": "root",
      "destination": ["部署流水线完成：`env-ready` 已落盘，巡检报告已归档。"]}
   ],
   "links": [

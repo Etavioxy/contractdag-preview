@@ -61,23 +61,23 @@ A file has exactly three regions, in this order: nodes, links, style. The style 
 
 | Region | Accepts |
 |---|---|
-| `<nodes>` | `[name:kind]` headers; keys are `path` and `destination`; kind is `change` (default), `query`, or `root` |
-| `<links>` | `[[from -> to]]` headers; `artifact` is required and may span multiple lines (one link can deliver several artifacts); any other key is free-form on a single line |
+| `<nodes>` | `[name]` or `[name:annotation]` headers; keys are `path` and `destination`, both optional; the annotation is free text shown under the name |
+| `<links>` | `[[from -> to]]` headers, and chained headers such as `[[A ->` `-> B -> C]]` spanning lines; `artifact` is optional and may span multiple lines (one link can deliver several artifacts); any other key is free-form on a single line |
 | `<style>` | Global settings such as `direction TB / BT / LR / RL`, `gap 32`, `font Sarasa Mono SC`, plus mermaid's three lines: `classDef` defines properties, `class` attaches them to nodes, `linkStyle` attaches them to links |
 
 Blocks are delimited by headers, not indentation; lines starting with `#` are comments and never reach the model.
 
-A `change` node without `path` is not a legal declaration — it touches things, so it must say where it may touch them.
+A link's identity is its pair of names: writing the same pair twice is the same edge, with artifacts merged. A chained header declares each neighbouring pair along the way.
 
 ## What the graph shows
 
-- **Nodes**: 56 tall and at least 160 wide — a long name widens the box instead of being cut; name on top, kind below, a badge in the top-right corner. Body text never enters the frame; click the badge to expand it into a floating card next to the graph that you can select and search
+- **Nodes**: 56 tall and at least 160 wide — a long name widens the box instead of being cut; name on top, annotation below when written, a badge in the top-right corner. Body text never enters the frame; click the badge to expand it into a floating card next to the graph that you can select and search
 - **Links**: curved, arrowheads sitting on the target frame; artifact names land in the gap between two layers, and labels in the same gap never overlap
-- **Zooming out**: below 0.75 the artifact labels go first, below 0.55 the kind goes too; names and borders stay until the minimum
-- **Defects**: edges in a cycle turn red, dangling nodes turn grey, a `change` node missing `path` and a duplicated artifact name each get a badge, and a link to an undeclared node cannot be drawn
+- **Zooming out**: below 0.75 the artifact labels go first, below 0.55 the annotation goes too; names and borders stay until the minimum
+- **Defects**: edges in a cycle turn red, a duplicated artifact name gets a badge, and a link to an undeclared node cannot be drawn
 - **Bottom-left**: `nodes · links · zoom`, with defects listed line by line (`line: message`) above it; the list collapses when there are none
 
-The graph is never withdrawn because of a defect — cycles and dangling nodes still render, and the defects are marked on the drawing.
+The graph is never withdrawn because of a defect — cycles still render, and the defects are marked on the drawing.
 
 ## Interaction
 
@@ -123,7 +123,7 @@ const { model, diagnostics } = parseContract(source)
 
 ## Editor support
 
-`.contractdag` has its own language id, `contract-dag`: region tags, keys, kinds, link arrows and comments are coloured separately; each region folds as one range, and so does each node or link block; completions follow the region under the cursor — keys and kinds in the node region, `artifact` and already-declared node names in the link region, keywords and directions in the style region.
+`.contractdag` has its own language id, `contract-dag`: region tags, keys, link arrows and comments are coloured separately; each region folds as one range, and so does each node or link block; bracket-pair colouring is off for this language, since `[[ ]]` is a delimiter rather than nesting. Completions appear at the start of a line only: the three region tags after `<`, `path` and `destination` in the node region, `artifact` plus keys already used in the link region, and the style keywords in the style region.
 
 ## Limits
 
